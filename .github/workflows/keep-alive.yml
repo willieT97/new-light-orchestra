@@ -1,0 +1,19 @@
+# Supabase pauses free projects after a week without activity.
+# This makes a small request twice a week so the members' area stays awake.
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: "0 9 * * 1,4"  # Mondays and Thursdays, 09:00 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ping Supabase
+        run: |
+          URL=$(grep -o 'SUPABASE_URL = "[^"]*"' config.js | cut -d'"' -f2)
+          KEY=$(grep -o 'SUPABASE_ANON_KEY = "[^"]*"' config.js | cut -d'"' -f2)
+          curl -fsS "$URL/rest/v1/pieces?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY"

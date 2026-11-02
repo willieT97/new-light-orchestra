@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New Light Orchestra</title>
+  <meta name="description" content="New Light Orchestra — a friendly amateur orchestra. Concerts, rehearsals and how to join.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="logo" href="index.html">New Light Orchestra</a>
+      <nav>
+        <a href="#about">About</a>
+        <a href="#concerts">Concerts</a>
+        <a href="#rehearsals">Rehearsals</a>
+        <a href="#join">Join</a>
+        <a href="#contact">Contact</a>
+        <a class="btn-members" href="members.html">Members</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="hero">
+    <div class="hero-sun" aria-hidden="true"></div>
+    <div class="hero-night" aria-hidden="true"></div>
+    <div class="wrap">
+      <h1>New Light Orchestra</h1>
+      <p>A friendly amateur orchestra for players who love making music together, whether you're picking up your instrument again or have played for years.</p>
+      <a class="btn" href="#concerts">Upcoming concerts</a>
+      <a class="btn ghost" href="#join">Join us</a>
+    </div>
+  </div>
+
+  <section id="about">
+    <div class="wrap two-col">
+      <div>
+        <div class="eyebrow">About us</div>
+        <h2>Music for everyone, played by everyone</h2>
+        <p>New Light Orchestra was founded in 2026 to give amateur musicians somewhere welcoming to play great orchestral repertoire.</p>
+      </div>
+      <div class="card">
+        <h3>The people</h3>
+        <p><strong>Musical Director:</strong> William Troy</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="concerts" class="alt">
+    <div class="wrap">
+      <div class="eyebrow">Concerts &amp; events</div>
+      <h2>Upcoming performances</h2>
+      <div class="grid">
+        <article class="card concert">
+          <h3>No concerts scheduled yet</h3>
+          <p class="muted">We're busy rehearsing for our first performance. Join the mailing list to hear as soon as a date is announced.</p>
+          <a class="btn small ghost" href="#contact">Join the mailing list</a>
+        </article>
+        <!-- To add a concert, copy this card above and fill it in:
+        <article class="card concert">
+          <span class="date">Sat 12 Dec 2026 · 7:30pm</span>
+          <h3>Concert name</h3>
+          <p class="muted">Venue name, address</p>
+          <ul><li>Composer: Piece</li><li>Composer: Piece</li></ul>
+          <a class="btn small" href="#">Get tickets</a>
+        </article>
+        -->
+      </div>
+    </div>
+  </section>
+
+  <section id="rehearsals">
+    <div class="wrap two-col">
+      <div>
+        <div class="eyebrow">Rehearsals</div>
+        <h2>Every Tuesday, 6:30–8:30pm</h2>
+        <p><strong>Where:</strong> Methodist Church Hall, Portlaoise</p>
+        <p class="muted">Our first rehearsal is on Tuesday 10 November.</p>
+      </div>
+      <div class="card">
+        <h3>Coming up</h3>
+        <ul class="schedule">
+          <li><span>Tue 10 Nov · 6:30–8:30pm</span><span class="tag need">First rehearsal</span></li>
+          <li><span>Tue 17 Nov · 6:30–8:30pm</span><span class="tag">Rehearsal</span></li>
+          <li><span>Tue 24 Nov · 6:30–8:30pm</span><span class="tag">Rehearsal</span></li>
+          <li><span>Tue 1 Dec · 6:30–8:30pm</span><span class="tag">Rehearsal</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="join" class="alt">
+    <div class="wrap two-col">
+      <div>
+        <div class="eyebrow">Join / auditions</div>
+        <h2>Come and play with us</h2>
+        <p>All orchestral instruments and every level of experience are welcome, and you don't need to read sheet music.</p>
+      </div>
+      <div class="card">
+        <h3>Register your interest</h3>
+        <form id="join-form">
+          <label>Full name <input name="name" required></label>
+          <label>Email <input name="email" type="email" required></label>
+          <label>Instrument
+            <select name="instrument" required>
+              <option value="">Choose…</option>
+              <option>Violin</option><option>Viola</option><option>Cello</option><option>Double bass</option>
+              <option>Flute</option><option>Oboe</option><option>Clarinet</option><option>Bassoon</option>
+              <option>Horn</option><option>Trumpet</option><option>Trombone</option><option>Tuba</option>
+              <option>Percussion</option><option>Harp</option><option>Other</option>
+            </select>
+          </label>
+          <label>Playing experience
+            <select name="level">
+              <option>Complete beginner</option><option>Returning after a break</option><option>Play regularly</option><option>Advanced / professional training</option>
+            </select>
+          </label>
+          <label>Anything else? <textarea name="message" rows="3"></textarea></label>
+          <label class="check"><input type="checkbox" required> I agree to New Light Orchestra storing my details to contact me about joining.</label>
+          <p class="error"></p>
+          <button class="btn" type="submit">Send</button>
+        </form>
+        <p id="join-thanks" class="notice" hidden>Thanks! We'll be in touch soon about coming along to a rehearsal.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact">
+    <div class="wrap two-col">
+      <div>
+        <div class="eyebrow">Contact</div>
+        <h2>Get in touch</h2>
+        <p><strong>Email:</strong> <a href="mailto:williamtroymusic@gmail.com">williamtroymusic@gmail.com</a><br>
+        <strong>Based in:</strong> Portlaoise</p>
+      </div>
+      <div class="card">
+        <h3>Mailing list</h3>
+        <p class="muted">Hear about concerts and events.</p>
+        <form id="mail-form">
+          <label>Email <input name="email" type="email" required></label>
+          <p class="error"></p>
+          <button class="btn" type="submit">Subscribe</button>
+        </form>
+        <p id="mail-thanks" class="notice" hidden>You're on the list!</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 New Light Orchestra</span>
+      <span><a href="#">Privacy</a> · <a href="members.html">Members</a></span>
+    </div>
+  </footer>
+
+  <script>
+    // As the sun scrolls up under the header, fade the hero back to its night colours.
+    // --night goes from 0 (sun fully visible) to 1 (sun fully hidden behind the header).
+    const hero = document.querySelector(".hero");
+    const sun = document.querySelector(".hero-sun");
+    const header = document.querySelector(".site-header");
+    let ticking = false;
+    function updateNight() {
+      ticking = false;
+      const covered = header.getBoundingClientRect().bottom - sun.getBoundingClientRect().top;
+      hero.style.setProperty("--night", Math.min(Math.max(covered / sun.offsetHeight, 0), 1));
+    }
+    addEventListener("scroll", () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(updateNight); }
+    }, { passive: true });
+    addEventListener("resize", updateNight);
+    sun.addEventListener("animationend", updateNight);
+    updateNight();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.0/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script>
+    // Both forms save into Supabase; the librarian reads them on the admin page.
+    const FORMS = {
+      "join-form": {
+        thanks: "join-thanks",
+        save: f => sb.from("join_requests").insert({
+          name: f.name.value.trim(), email: f.email.value.trim(), instrument: f.instrument.value,
+          level: f.level.value, message: f.message.value.trim() || null,
+        }),
+      },
+      "mail-form": {
+        thanks: "mail-thanks",
+        save: f => sb.from("mailing_list").insert({ email: f.email.value.trim().toLowerCase() }),
+      },
+    };
+    for (const [formId, { thanks, save }] of Object.entries(FORMS)) {
+      document.getElementById(formId).addEventListener("submit", async e => {
+        e.preventDefault();
+        const f = e.target, errorBox = f.querySelector(".error"), button = f.querySelector("button");
+        if (!sb) { errorBox.textContent = "This form isn't connected yet."; return; }
+        button.disabled = true;
+        const { error } = await save(f);
+        button.disabled = false;
+        // 23505 = already subscribed, which is fine.
+        if (error && error.code !== "23505") { errorBox.textContent = "Sorry, that didn't work. Please try again or email us."; return; }
+        f.hidden = true;
+        document.getElementById(thanks).hidden = false;
+      });
+    }
+  </script>
+</body>
+</html>

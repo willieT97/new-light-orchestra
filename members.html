@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Members · New Light Orchestra</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="logo" href="index.html">New Light Orchestra</a>
+      <nav>
+        <a href="index.html#concerts">Concerts</a>
+        <a href="index.html#rehearsals">Rehearsals</a>
+        <a href="index.html#join">Join</a>
+        <a href="index.html#contact">Contact</a>
+        <a class="btn-members" href="members.html">Members</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="members-main">
+    <div class="wrap">
+
+      <div id="login-view" class="card login-card" hidden>
+        <div class="eyebrow">Members only</div>
+        <h2 id="auth-title">Sign in</h2>
+        <p id="auth-notice" class="notice" hidden></p>
+
+        <form id="signin-form">
+          <label>Email <input name="email" type="email" autocomplete="email" required></label>
+          <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+          <button class="btn" type="submit">Sign in</button>
+          <p class="auth-links"><button type="button" class="link-btn" data-show="forgot-form">Forgot your password?</button></p>
+        </form>
+
+        <form id="signup-form" hidden>
+          <p class="muted">Use the email address the orchestra has on its members list. We'll send you one email to confirm it's yours. After that, you just sign in with your password.</p>
+          <label>Email <input name="email" type="email" autocomplete="email" required></label>
+          <label>Choose a password <input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
+          <label>Type it again <input name="confirm" type="password" autocomplete="new-password" minlength="8" required></label>
+          <button class="btn" type="submit">Create account</button>
+        </form>
+
+        <form id="forgot-form" hidden>
+          <p class="muted">Enter your email and we'll send you a link to choose a new password.</p>
+          <label>Email <input name="email" type="email" autocomplete="email" required></label>
+          <button class="btn" type="submit">Send reset link</button>
+        </form>
+
+        <form id="newpass-form" hidden>
+          <label>New password <input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
+          <label>Type it again <input name="confirm" type="password" autocomplete="new-password" minlength="8" required></label>
+          <button class="btn" type="submit">Save password</button>
+        </form>
+
+        <p id="auth-error" class="error"></p>
+        <p id="auth-switch" class="auth-links"></p>
+      </div>
+
+      <div id="message-view" class="card login-card" hidden>
+        <h2 id="message-title"></h2>
+        <p id="message-text" class="muted"></p>
+        <button id="message-logout" class="btn small ghost" type="button" hidden>Sign out</button>
+      </div>
+
+      <div id="library-view" hidden>
+        <div class="member-bar">
+          <div>
+            <div class="eyebrow">Members' library</div>
+            <h2 id="welcome">Welcome</h2>
+          </div>
+          <div>
+            <a id="admin-link" class="btn small" href="admin.html" hidden>Librarian tools</a>
+            <button class="btn small ghost" type="button" data-show="newpass-form">Change password</button>
+            <button id="logout" class="btn small ghost" type="button">Sign out</button>
+          </div>
+        </div>
+
+        <div class="library">
+          <aside>
+            <div class="card">
+              <h3>This term's music</h3>
+              <div id="piece-list"></div>
+            </div>
+            <div class="card notices">
+              <h3>Notices</h3>
+              <ul class="schedule">
+                <li><span>First rehearsal Tue 10 Nov, 6:30pm</span><span class="tag need">Soon</span></li>
+                <li><span>Concert dress: all black</span><span class="tag">Info</span></li>
+              </ul>
+            </div>
+          </aside>
+
+          <div class="card">
+            <div class="viewer-head">
+              <div>
+                <h3 id="viewer-title">Choose a part</h3>
+                <span id="viewer-sub" class="muted"></span>
+              </div>
+              <div id="downloads" class="download-buttons" hidden>
+                <button id="download-pdf" class="btn small" type="button">Download PDF</button>
+                <button id="download" class="btn small ghost" type="button">MusicXML</button>
+              </div>
+            </div>
+            <div class="controls" id="controls" hidden>
+              <button id="play" class="btn small" type="button">▶ Play</button>
+              <label>Tempo <input id="tempo" type="range" min="40" max="180" value="100"> <span id="tempo-val">100</span> bpm</label>
+              <label>Your part <input id="vol-mine" type="range" min="0" max="100" value="80" aria-label="Volume of your part"></label>
+              <label>Rest of orchestra <input id="vol-others" type="range" min="0" max="100" value="40" aria-label="Volume of the other parts"></label>
+              <label>Count-in
+                <select id="countin">
+                  <option value="0">Off</option>
+                  <option value="1">1 bar</option>
+                  <option value="2" selected>2 bars</option>
+                </select>
+              </label>
+              <label><input id="metronome" type="checkbox"> Metronome</label>
+              <span id="count-display" class="count-display" aria-live="polite"></span>
+            </div>
+            <div id="score"><p class="muted">Pick your part from the list to see the music.</p></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 New Light Orchestra</span>
+      <span>Music is for members' personal practice only. Please don't share it.</span>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.0/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.4/build/opensheetmusicdisplay.min.js"></script>
+  <script src="config.js"></script>
+  <script src="members.js"></script>
+</body>
+</html>

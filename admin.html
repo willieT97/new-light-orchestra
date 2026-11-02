@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Librarian Tools · New Light Orchestra</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="logo" href="index.html">New Light Orchestra</a>
+      <nav>
+        <a href="#music">Music</a>
+        <a href="#members">Members</a>
+        <a href="#requests">Join requests</a>
+        <a href="#mailing">Mailing list</a>
+        <a class="btn-members" href="members.html">Members' area</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="members-main">
+    <div class="wrap">
+
+      <div id="message-view" class="card login-card" hidden>
+        <h2 id="message-title"></h2>
+        <p id="message-text" class="muted"></p>
+        <a class="btn small" href="members.html">Go to sign in</a>
+      </div>
+
+      <div id="admin-view" hidden>
+        <div class="eyebrow">Librarian tools</div>
+        <h2>Manage the orchestra</h2>
+        <p id="status" class="notice" hidden></p>
+
+        <section id="music" class="admin-section">
+          <h3>Music</h3>
+          <div class="two-col">
+            <div id="admin-pieces"></div>
+            <div class="stack">
+            <div class="card">
+              <h3>Add a piece from a full score</h3>
+              <p class="muted small-print">Upload the whole score as one MusicXML file. Each instrument becomes its own part automatically. Check the names before uploading.</p>
+              <form id="score-form">
+                <label>Full score <input name="file" type="file" accept=".musicxml,.xml" required></label>
+                <div id="score-details" hidden>
+                  <label>Title <input name="title" required></label>
+                  <label>Composer <input name="composer"></label>
+                  <label>Concert <input name="concert" placeholder="e.g. Winter Concert 2026"></label>
+                  <div class="table-card"><table id="score-parts"></table></div>
+                  <button class="btn" type="submit">Create piece and upload parts</button>
+                </div>
+              </form>
+            </div>
+            <div class="card">
+              <h3>Add a piece part by part</h3>
+              <form id="piece-form">
+                <label>Title <input name="title" required></label>
+                <label>Composer <input name="composer"></label>
+                <label>Concert <input name="concert" placeholder="e.g. Winter Concert 2026"></label>
+                <button class="btn" type="submit">Add piece</button>
+              </form>
+              <p class="muted small-print">Then add each part to the piece. Export parts from MuseScore or Sibelius as <strong>uncompressed MusicXML</strong> (.musicxml or .xml).</p>
+            </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="members" class="admin-section">
+          <h3>Members</h3>
+          <p class="muted">Anyone on this list can sign in and see the music. Removing someone takes away their access straight away.</p>
+          <div class="two-col">
+            <div class="card table-card"><table id="members-table"></table></div>
+            <div class="card">
+              <h3>Add a member</h3>
+              <form id="member-form">
+                <label>Email <input name="email" type="email" required></label>
+                <label>Name <input name="name" required></label>
+                <label>Instrument <input name="instrument" list="instrument-list" required></label>
+                <label class="check"><input name="is_admin" type="checkbox"> Librarian / admin (can manage music and members)</label>
+                <button class="btn" type="submit">Add member</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section id="requests" class="admin-section">
+          <h3>Join requests</h3>
+          <div class="card table-card"><table id="requests-table"></table></div>
+        </section>
+
+        <section id="mailing" class="admin-section">
+          <h3>Mailing list</h3>
+          <div class="card">
+            <p id="mailing-count" class="muted"></p>
+            <textarea id="mailing-emails" rows="4" readonly></textarea>
+            <p><button id="copy-emails" class="btn small ghost" type="button">Copy all emails</button></p>
+          </div>
+        </section>
+      </div>
+
+      <datalist id="instrument-list"></datalist>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.0/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
