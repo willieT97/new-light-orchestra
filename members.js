@@ -272,10 +272,12 @@ function withDeclaration(xml) {
 
 // Show the title and composer from the library, not whatever the file says
 // (MuseScore leaves "Untitled score" and "Composer / arranger" if they weren't filled in).
+// Also numbers bars only at the start of each line, as printed parts do.
 function useLibraryDetails(display, piece, part) {
   display.Sheet.TitleString = piece.title;
   display.Sheet.SubtitleString = part.instrument;
   display.Sheet.ComposerString = piece.composer || "";
+  display.EngravingRules.RenderMeasureNumbersOnlyAtSystemStart = true;
 }
 
 function loadScript(src) {
