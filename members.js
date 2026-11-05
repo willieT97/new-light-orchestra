@@ -242,9 +242,11 @@ async function selectPart(piece, part, btn) {
     return;
   }
   if (current?.part !== part) return;  // another part was picked meanwhile
-  const { tempo } = parseMusicXML(xml);
+  const { tempo, measures } = parseMusicXML(xml);
   $("tempo").value = tempo;
   $("tempo-val").textContent = tempo;
+  current.bars = { first: measures[0]?.label ?? 1, last: measures.at(-1)?.label ?? 1 };
+  wholePiece();
 
   $("score").replaceChildren();
   osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay($("score"), {
@@ -341,8 +343,11 @@ function parseMusicXML(xml) {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   let divisions = 1, tempo = null, t = 0, lastStart = 0, simple = true, time = null, transpose = 0;
   const notes = [];
+  const measures = [];  // { label, start, end } per bar, for practising a section
   const openTies = new Map();  // voice:pitch -> the note a tie is still holding on
   for (const measure of doc.querySelectorAll("part > measure")) {
+    const measureStart = t;
+    let measureEnd = t;
     for (const node of measure.children) {
       if (node.tagName === "attributes") {
         const d = node.querySelector("divisions");
@@ -380,9 +385,14 @@ function parseMusicXML(xml) {
         else openTies.delete(key);
         notes.push(note);
       }
+      measureEnd = Math.max(measureEnd, t);
     }
+    // Several voices in one bar step back and forth in time; the bar ends at the furthest point.
+    t = measureEnd;
+    const label = parseInt(measure.getAttribute("number"), 10);
+    measures.push({ label: Number.isFinite(label) ? label : measures.length + 1, start: measureStart, end: measureEnd });
   }
-  return { notes, tempo: tempo ?? 100, simple, time: time ?? { beats: 4, beatType: 4 } };
+  return { notes, measures, tempo: tempo ?? 100, simple, time: time ?? { beats: 4, beatType: 4 } };
 }
 
 // Slider position (0–100) to gain; squared so the slider feels even to the ear.
@@ -425,9 +435,71 @@ function scheduleClicks(ctx, time, secPerBeat, from, end, destination) {
   }
 }
 
-async function play() {
+// ---------- Practice section ----------
+
+function wholePiece() {
+  if (!current?.bars) return;
+  for (const id of ["from-bar", "to-bar"]) {
+    $(id).min = current.bars.first;
+    $(id).max = current.bars.last;
+  }
+  $("from-bar").value = current.bars.first;
+  $("to-bar").value = current.bars.last;
+}
+
+// Keeps the bar numbers inside the piece, with "from" never after "to".
+function tidyBars(changed) {
+  if (!current?.bars) return;
+  const clamp = v => Math.min(Math.max(parseInt(v, 10) || current.bars.first, current.bars.first), current.bars.last);
+  let from = clamp($("from-bar").value), to = clamp($("to-bar").value);
+  if (from > to) { if (changed === "from-bar") to = from; else from = to; }
+  $("from-bar").value = from;
+  $("to-bar").value = to;
+}
+
+// The chosen bars as a time span (in quarter notes) of the given part.
+function sectionSpan(measures) {
+  const from = +$("from-bar").value, to = +$("to-bar").value;
+  const first = measures.find(m => m.label >= from) ?? measures[0];
+  const last = [...measures].reverse().find(m => m.label <= to) ?? measures.at(-1);
+  return { from: first.start, to: Math.max(last.end, first.end) };
+}
+
+// Just the notes inside the span, moved so the span starts at time 0.
+function notesIn(notes, span) {
+  const eps = 1e-6;
+  return notes
+    .filter(n => n.start >= span.from - eps && n.start < span.to - eps)
+    .map(n => ({
+      ...n,
+      start: n.start - span.from,
+      dur: Math.min(n.dur, span.to - n.start),
+      // A note tied over from before the section still needs to sound when the section starts.
+      tied: n.tied && n.start > span.from + eps,
+    }));
+}
+
+$("whole-piece").addEventListener("click", wholePiece);
+
+// Phones: the control bar is folded to Play and Tempo until "More options" is tapped.
+$("more-controls").addEventListener("click", e => {
+  const open = $("controls").classList.toggle("expanded");
+  e.target.textContent = open ? "Fewer options" : "More options";
+  e.target.setAttribute("aria-expanded", open);
+});
+$("from-bar").addEventListener("change", () => tidyBars("from-bar"));
+$("to-bar").addEventListener("change", () => tidyBars("to-bar"));
+
+// ---------- Playing ----------
+
+// `repeat` is set when Loop starts the section again. That round reuses the audio player
+// that's already running: browsers only let sound start right after a click, so a new
+// player created by the loop on its own would be silent.
+async function play({ repeat = false } = {}) {
   if (!current) return;
-  stop();
+  const previous = repeat ? playback : null;
+  if (previous) previous.timers.forEach(clearTimeout);
+  else stop();
   const mine = current.part.file_path;
   // Every part is scheduled, so the volume sliders can bring the others in or out mid-play.
   const paths = current.piece.parts.map(p => p.file_path);
@@ -438,35 +510,42 @@ async function play() {
     alert(`Couldn't load the music: ${err.message}`);
     return;
   }
-  const parts = paths.map((path, i) => ({ path, ...parseMusicXML(texts[i]) }));
-  const main = parts.find(p => p.path === mine);
+  const parsed = paths.map((path, i) => ({ path, ...parseMusicXML(texts[i]) }));
+  const main = parsed.find(p => p.path === mine);
+  const span = sectionSpan(main.measures);
+  const parts = parsed.map(p => ({ ...p, notes: notesIn(p.notes, span) }));
+  const mainNotes = parts.find(p => p.path === mine).notes;
 
   const secPerBeat = 60 / +$("tempo").value;
-  const ctx = new AudioContext();
-  const groups = {
-    mine: ctx.createGain(),
-    others: ctx.createGain(),
-    clicks: ctx.createGain(),
-    countIn: ctx.createGain(),
-  };
-  groups.mine.gain.value = sliderGain("vol-mine");
-  groups.others.gain.value = sliderGain("vol-others", OTHERS_MAX);
-  groups.clicks.gain.value = $("metronome").checked ? 1 : 0;
-  Object.values(groups).forEach(g => g.connect(ctx.destination));
+  if (repeat && playback !== previous) return;  // stopped while the music was loading
+  const ctx = previous?.ctx ?? new AudioContext();
+  if (ctx.state === "suspended") await ctx.resume();
+  let groups = previous?.groups;
+  if (!groups) {
+    groups = {
+      mine: ctx.createGain(),
+      others: ctx.createGain(),
+      clicks: ctx.createGain(),
+      countIn: ctx.createGain(),
+    };
+    groups.mine.gain.value = sliderGain("vol-mine");
+    groups.others.gain.value = sliderGain("vol-others", OTHERS_MAX);
+    groups.clicks.gain.value = $("metronome").checked ? 1 : 0;
+    Object.values(groups).forEach(g => g.connect(ctx.destination));
+  }
 
   // Count-in: bars of clicks (always heard) before the music starts, with the beat
   // number shown on screen, so the player has time to get their instrument up.
   const beatSec = secPerBeat * 4 / main.time.beatType;
-  const countBeats = +$("countin").value * main.time.beats;
+  const countBeats = +$("countin").value * main.time.beats;  // before every round, loops too
   const clickFrom = ctx.currentTime + 0.15;
   const startAt = clickFrom + countBeats * beatSec;
   playback = { ctx, timers: [], groups };
   $("play").textContent = "■ Stop";
 
-  let end = 0;
+  const end = span.to - span.from;
   for (const part of parts) {
     scheduleNotes(ctx, part.notes, secPerBeat, 0.22, startAt, part.path === mine ? groups.mine : groups.others);
-    for (const n of part.notes) end = Math.max(end, n.start + n.dur);
   }
   scheduleClicks(ctx, main.time, secPerBeat, clickFrom, startAt, groups.countIn);
   scheduleClicks(ctx, main.time, secPerBeat, startAt, startAt + end * secPerBeat, groups.clicks);
@@ -481,11 +560,16 @@ async function play() {
   if (osmd && main.simple) {
     osmd.cursor.show();
     osmd.cursor.reset();
-    const onsets = main.notes.filter(n => !n.chord).map(n => n.start);
+    // Step the cursor forward to the first bar of the section (its timestamps are in whole notes).
+    const it = osmd.cursor.Iterator;
+    while (!it.EndReached && it.currentTimeStamp.RealValue * 4 < span.from - 1e-6) osmd.cursor.next();
+    const onsets = mainNotes.filter(n => !n.chord).map(n => n.start);
     const delay = (startAt - ctx.currentTime) * 1000;
     onsets.slice(1).forEach(s => playback.timers.push(setTimeout(() => osmd.cursor.next(), delay + s * secPerBeat * 1000)));
   }
-  playback.timers.push(setTimeout(stop, (startAt - ctx.currentTime + end * secPerBeat) * 1000 + 300));
+  // At the end of the section: go round again if Loop is ticked, otherwise stop.
+  playback.timers.push(setTimeout(() => ($("loop").checked ? play({ repeat: true }) : stop()),
+    (startAt - ctx.currentTime + end * secPerBeat) * 1000 + 150));
 }
 
 function stop() {

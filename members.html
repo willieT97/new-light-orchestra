@@ -118,7 +118,7 @@
                   <button id="play" class="btn small" type="button">▶ Play</button>
                   <span id="count-display" class="count-display" aria-live="polite"></span>
                 </div>
-                <label>Tempo <span class="control-value"><span id="tempo-val">100</span> bpm</span>
+                <label class="tempo-control">Tempo <span class="control-value"><span id="tempo-val">100</span> bpm</span>
                   <input id="tempo" type="range" min="40" max="180" value="100"></label>
                 <label>Your part <input id="vol-mine" type="range" min="0" max="100" value="80" aria-label="Volume of your part"></label>
                 <label>Rest of orchestra <input id="vol-others" type="range" min="0" max="100" value="40" aria-label="Volume of the other parts"></label>
@@ -130,6 +130,16 @@
                   </select>
                 </label>
                 <label class="inline"><input id="metronome" type="checkbox"> Metronome</label>
+                <fieldset class="practice">
+                  <legend>Practice section</legend>
+                  <div class="bar-range">
+                    <label>From bar <input id="from-bar" type="number" min="1" value="1" inputmode="numeric"></label>
+                    <label>To bar <input id="to-bar" type="number" min="1" value="1" inputmode="numeric"></label>
+                  </div>
+                  <label class="inline"><input id="loop" type="checkbox"> Loop</label>
+                  <button id="whole-piece" class="link-btn" type="button">Whole piece</button>
+                </fieldset>
+                <button id="more-controls" class="link-btn more-toggle" type="button" aria-expanded="false">More options</button>
               </div>
             </div>
           </div>

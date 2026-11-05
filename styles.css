@@ -140,25 +140,41 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 /* Music on the left, playback controls in a column on the right that stays in view
    while a long piece scrolls. */
 .viewer-body { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 20px; align-items: start; }
-.controls { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 16px; padding: 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; font-size: .9rem; }
+.controls { position: sticky; top: 88px; max-height: calc(100vh - 104px); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; font-size: .9rem; }
 .controls label { display: flex; flex-direction: column; gap: 6px; font-weight: 500; }
 .controls label.inline { flex-direction: row; align-items: center; gap: 8px; }
 .controls .control-value { color: var(--muted); font-weight: 400; }
 .controls input[type=range] { width: 100%; padding: 0; }
 .controls input[type=checkbox] { width: auto; }
 .controls select { width: 100%; padding: 6px 8px; }
+.practice { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--line); min-width: 0; }
+.practice legend { float: left; width: 100%; padding: 0; margin-bottom: 2px; font-weight: 600; }
+.practice .bar-range { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.practice input[type=number] { width: 100%; padding: 6px 8px; }
+.practice .link-btn { align-self: flex-start; color: var(--navy); }
 .play-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.more-toggle { display: none; }
 .play-row .btn { flex: 1; }
 
 /* Phones and narrow windows: no room for a side column, so the controls become a
    compact bar stuck to the bottom of the screen. */
 @media (max-width: 1000px) {
   .viewer-body { grid-template-columns: 1fr; }
-  .controls { top: auto; bottom: 0; z-index: 5; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 12px; margin: 0 -8px; border-radius: 10px 10px 0 0; box-shadow: 0 -6px 18px rgba(23, 33, 58, .12); }
+  .controls { top: auto; bottom: 0; max-height: 70vh; z-index: 5; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 12px; margin: 0 -8px; border-radius: 10px 10px 0 0; box-shadow: 0 -6px 18px rgba(23, 33, 58, .12); }
   .controls label { flex-direction: row; align-items: center; }
   .controls input[type=range] { width: 90px; }
   .controls select { width: auto; padding: 4px 6px; }
   .play-row .btn { flex: none; }
+  .practice { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: 100%; padding-top: 8px; }
+  .practice legend { float: none; width: auto; margin: 0; }
+  .practice .bar-range { display: flex; gap: 8px; }
+  .practice input[type=number] { width: 64px; padding: 4px 6px; }
+  .practice .link-btn { align-self: center; }
+  /* Folded down to Play and Tempo until "More options" is tapped. */
+  .controls .more-toggle { display: inline; order: 1; margin-left: auto; color: var(--navy); }
+  .controls .tempo-control { order: 2; }
+  .controls > :not(.play-row):not(.more-toggle):not(.tempo-control) { order: 3; }
+  .controls:not(.expanded) > :not(.play-row):not(.tempo-control):not(.more-toggle) { display: none; }
 }
 .download-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
 .pdf-render { position: absolute; left: -10000px; top: 0; width: 794px; }
