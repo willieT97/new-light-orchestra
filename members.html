@@ -109,22 +109,29 @@
                 <button id="download" class="btn small ghost" type="button">MusicXML</button>
               </div>
             </div>
-            <div class="controls" id="controls" hidden>
-              <button id="play" class="btn small" type="button">▶ Play</button>
-              <label>Tempo <input id="tempo" type="range" min="40" max="180" value="100"> <span id="tempo-val">100</span> bpm</label>
-              <label>Your part <input id="vol-mine" type="range" min="0" max="100" value="80" aria-label="Volume of your part"></label>
-              <label>Rest of orchestra <input id="vol-others" type="range" min="0" max="100" value="40" aria-label="Volume of the other parts"></label>
-              <label>Count-in
-                <select id="countin">
-                  <option value="0">Off</option>
-                  <option value="1">1 bar</option>
-                  <option value="2" selected>2 bars</option>
-                </select>
-              </label>
-              <label><input id="metronome" type="checkbox"> Metronome</label>
-              <span id="count-display" class="count-display" aria-live="polite"></span>
+            <div class="viewer-body">
+              <div id="score"><p class="muted">Pick your part from the list to see the music.</p></div>
+              <!-- After the score so it can stick to the bottom of the screen on phones;
+                   on wider screens it sits in a column on the right and stays in view. -->
+              <div class="controls" id="controls" hidden>
+                <div class="play-row">
+                  <button id="play" class="btn small" type="button">▶ Play</button>
+                  <span id="count-display" class="count-display" aria-live="polite"></span>
+                </div>
+                <label>Tempo <span class="control-value"><span id="tempo-val">100</span> bpm</span>
+                  <input id="tempo" type="range" min="40" max="180" value="100"></label>
+                <label>Your part <input id="vol-mine" type="range" min="0" max="100" value="80" aria-label="Volume of your part"></label>
+                <label>Rest of orchestra <input id="vol-others" type="range" min="0" max="100" value="40" aria-label="Volume of the other parts"></label>
+                <label>Count-in
+                  <select id="countin">
+                    <option value="0">Off</option>
+                    <option value="1">1 bar</option>
+                    <option value="2" selected>2 bars</option>
+                  </select>
+                </label>
+                <label class="inline"><input id="metronome" type="checkbox"> Metronome</label>
+              </div>
             </div>
-            <div id="score"><p class="muted">Pick your part from the list to see the music.</p></div>
           </div>
         </div>
       </div>

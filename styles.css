@@ -120,6 +120,7 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 
 /* Members area */
 .members-main { padding: 40px 0 80px; min-height: 70vh; }
+.members-main .wrap { max-width: 1400px; }  /* room for the music plus the controls column */
 .login-card { max-width: 420px; margin: 40px auto; }
 .error { color: #b42318; font-size: .9rem; min-height: 1.2em; margin: 0; }
 .auth-links { margin: 0; font-size: .92rem; color: var(--muted); }
@@ -136,11 +137,29 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 .part-btn:hover { background: var(--bg); }
 .part-btn.active { border-color: var(--gold); background: var(--gold-soft); }
 .viewer-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
-.controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; padding: 12px 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 16px; font-size: .9rem; }
-.controls label { display: flex; align-items: center; gap: 8px; font-weight: 500; }
-.controls input[type=range] { width: 120px; padding: 0; }
+/* Music on the left, playback controls in a column on the right that stays in view
+   while a long piece scrolls. */
+.viewer-body { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 20px; align-items: start; }
+.controls { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 16px; padding: 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; font-size: .9rem; }
+.controls label { display: flex; flex-direction: column; gap: 6px; font-weight: 500; }
+.controls label.inline { flex-direction: row; align-items: center; gap: 8px; }
+.controls .control-value { color: var(--muted); font-weight: 400; }
+.controls input[type=range] { width: 100%; padding: 0; }
 .controls input[type=checkbox] { width: auto; }
-.controls select { width: auto; padding: 4px 8px; }
+.controls select { width: 100%; padding: 6px 8px; }
+.play-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.play-row .btn { flex: 1; }
+
+/* Phones and narrow windows: no room for a side column, so the controls become a
+   compact bar stuck to the bottom of the screen. */
+@media (max-width: 1000px) {
+  .viewer-body { grid-template-columns: 1fr; }
+  .controls { top: auto; bottom: 0; z-index: 5; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 12px; margin: 0 -8px; border-radius: 10px 10px 0 0; box-shadow: 0 -6px 18px rgba(23, 33, 58, .12); }
+  .controls label { flex-direction: row; align-items: center; }
+  .controls input[type=range] { width: 90px; }
+  .controls select { width: auto; padding: 4px 6px; }
+  .play-row .btn { flex: none; }
+}
 .download-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
 .pdf-render { position: absolute; left: -10000px; top: 0; width: 794px; }
 .count-display { min-width: 2ch; font-family: var(--serif); font-size: 1.9rem; font-weight: 600; line-height: 1; color: var(--gold); }
