@@ -162,6 +162,15 @@ $("message-logout").addEventListener("click", signOut);
 const baseInstrument = s => s.trim().toLowerCase().replace(/\s+\d+$/, "");
 const sameInstrument = (part, mine) => baseInstrument(part) === baseInstrument(mine);
 
+// Parts in orchestral score order (flute first, double bass last), then by name.
+function scoreOrder(a, b) {
+  const rank = part => {
+    const i = INSTRUMENTS.findIndex(name => sameInstrument(part.instrument, name));
+    return i < 0 ? INSTRUMENTS.length : i;
+  };
+  return rank(a) - rank(b) || a.instrument.localeCompare(b.instrument, undefined, { numeric: true });
+}
+
 async function openLibrary() {
   $("welcome").textContent = `Welcome, ${member.name}`;
   $("admin-link").hidden = !member.is_admin;
@@ -174,25 +183,46 @@ async function openLibrary() {
   if (error) { list.append(el("p", { className: "error", textContent: error.message })); return; }
   if (!pieces.length) { list.append(el("p", { className: "muted", textContent: "No music has been added yet." })); return; }
 
-  let mine = null;
-  for (const piece of pieces) {
-    const div = el("div", { className: "piece" },
-      el("h3", { textContent: piece.title }),
+  // Just the pieces: choosing one opens the member's own part.
+  const buttons = pieces.map(piece => {
+    const btn = el("button", { className: "piece-btn", type: "button" },
+      el("span", { className: "piece-title", textContent: piece.title }),
       el("small", { textContent: [piece.composer, piece.concert].filter(Boolean).join(" · ") }));
-    // Put the member's own part first.
-    const isMine = p => sameInstrument(p.instrument, member.instrument);
-    const parts = [...piece.parts].sort((a, b) => isMine(b) - isMine(a) || a.instrument.localeCompare(b.instrument));
-    for (const part of parts) {
-      const btn = el("button", { className: "part-btn", type: "button" },
-        el("span", { textContent: part.instrument }),
-        isMine(part) && el("span", { className: "tag need", textContent: "Your part" }));
-      if (isMine(part)) mine ??= { piece, part, btn };
-      btn.addEventListener("click", () => selectPart(piece, part, btn));
-      div.append(btn);
-    }
-    list.append(div);
+    btn.addEventListener("click", () => openPiece(piece, btn));
+    list.append(btn);
+    return btn;
+  });
+  openPiece(pieces[0], buttons[0]);
+}
+
+// Players get their own instrument's part; the musical director and librarians (admins)
+// can switch to any part. A player with several parts (Flute 1 and 2) can switch between those.
+function openPiece(piece, btn) {
+  document.querySelectorAll(".piece-btn").forEach(b => b.classList.toggle("active", b === btn));
+  const parts = [...piece.parts].sort(scoreOrder);
+  const mine = parts.filter(p => sameInstrument(p.instrument, member.instrument));
+  const choices = member.is_admin ? parts : mine;
+
+  if (!choices.length) {
+    stop();
+    current = null;
+    $("viewer-title").textContent = piece.title;
+    $("viewer-sub").textContent = piece.composer;
+    $("part-picker").hidden = true;
+    $("downloads").hidden = true;
+    $("controls").hidden = true;
+    $("score").replaceChildren(el("p", { className: "muted",
+      textContent: `There's no ${member.instrument} part in this piece. If you think that's a mistake, please ask the librarian.` }));
+    return;
   }
-  if (mine) selectPart(mine.piece, mine.part, mine.btn);
+
+  const select = $("part-select");
+  select.replaceChildren(...choices.map((p, i) => el("option", { value: i, textContent: p.instrument })));
+  select.onchange = () => selectPart(piece, choices[+select.value]);
+  $("part-picker").hidden = choices.length < 2;
+  const first = mine[0] ?? choices[0];
+  select.value = choices.indexOf(first);
+  selectPart(piece, first);
 }
 
 async function loadPart(path) {
@@ -204,9 +234,8 @@ async function loadPart(path) {
   return partCache.get(path);
 }
 
-async function selectPart(piece, part, btn) {
+async function selectPart(piece, part) {
   stop();
-  document.querySelectorAll(".part-btn").forEach(b => b.classList.toggle("active", b === btn));
   current = { piece, part };
   $("viewer-title").textContent = `${piece.title} — ${part.instrument}`;
   $("viewer-sub").textContent = piece.composer;
