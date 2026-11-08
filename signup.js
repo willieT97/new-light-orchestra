@@ -3,10 +3,14 @@
 
 const $ = id => document.getElementById(id);
 const STEPS = ["step-registered", "step-email", "step-not-listed", "step-has-account", "step-password", "step-done"];
+// Checking in happens under a night sky; creating the account brings the sunrise.
+const NIGHT_STEPS = ["step-email", "step-not-listed", "step-has-account", "step-password"];
 let email = "";
 
 function showStep(step) {
   for (const s of STEPS) $(s).hidden = s !== step;
+  document.body.classList.toggle("night", NIGHT_STEPS.includes(step));
+  document.body.classList.toggle("day", step === "step-done");
   document.querySelectorAll(".signup-email").forEach(e => { e.textContent = email; });
   $("email-error").textContent = "";
   $("password-error").textContent = "";
@@ -28,11 +32,8 @@ async function submitStep(form, errorBox, action) {
   const button = form.querySelector("button[type=submit]");
   button.disabled = true;
   try { await action(); }
-  catch (err) {
-    $(errorBox).textContent = /rate limit/i.test(err.message)
-      ? "Too many emails have been sent in the last hour. Please try again a bit later."
-      : err.message;
-  } finally { button.disabled = false; }
+  catch (err) { $(errorBox).textContent = friendlyError(err); }
+  finally { button.disabled = false; }
 }
 
 $("email-form").addEventListener("submit", e => {

@@ -64,11 +64,7 @@ async function submitAuth(form, action) {
   $("auth-error").textContent = "";
   button.disabled = true;
   try { await action(form); }
-  catch (err) {
-    $("auth-error").textContent = /rate limit/i.test(err.message)
-      ? "Too many emails have been sent in the last hour. Please try again a bit later."
-      : err.message;
-  }
+  catch (err) { $("auth-error").textContent = friendlyError(err); }
   finally { button.disabled = false; }
 }
 

@@ -132,6 +132,50 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 .signup-card h2 { margin: 0; }
 .signup-card p { margin: 0; }
 .signup-choices { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Sign-up page scene: night sky while checking in and choosing a password, then the
+   sky turns to morning and the sun rises once the account is created. */
+.signup-page .members-main { position: relative; overflow: hidden; }
+.signup-page .members-main > .wrap { position: relative; z-index: 1; }
+.signup-sky { position: absolute; inset: 0; z-index: 0; background: var(--bg); transition: background-color 2.5s ease; }
+.signup-sky::before, .signup-sky::after { content: ""; position: absolute; inset: 0; opacity: 0; }
+.signup-sky::before { background: linear-gradient(180deg, #6fb4ec 0%, #9fd0f5 55%, #d2ebfb 100%); transition: opacity 3s ease; }
+.signup-sky::after {  /* stars */
+  background-image:
+    radial-gradient(1.5px 1.5px at 8% 14%, #fff, transparent), radial-gradient(1px 1px at 18% 42%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 27% 9%, #fff, transparent), radial-gradient(1px 1px at 36% 63%, #fff, transparent),
+    radial-gradient(2px 2px at 46% 22%, #fff, transparent), radial-gradient(1px 1px at 58% 48%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 67% 12%, #fff, transparent), radial-gradient(1px 1px at 76% 70%, #fff, transparent),
+    radial-gradient(2px 2px at 85% 30%, #fff, transparent), radial-gradient(1px 1px at 93% 56%, #fff, transparent),
+    radial-gradient(1px 1px at 4% 78%, #fff, transparent), radial-gradient(1.5px 1.5px at 52% 86%, #fff, transparent);
+  transition: opacity 1.5s ease;
+}
+.signup-sun {
+  position: absolute; left: 50%; bottom: -260px; width: 170px; height: 170px; margin-left: -85px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffedc2, #e2b960 60%, #ad8237);
+  box-shadow: 0 0 60px 12px rgba(245, 210, 135, .55), 0 0 180px 60px rgba(245, 210, 135, .25);
+  transition: bottom 3.4s cubic-bezier(.22, .7, .25, 1) .4s;
+}
+
+.signup-page.night .signup-sky { background-color: var(--navy); }
+.signup-page.night .signup-sky::after { opacity: .85; animation: twinkle 4s ease-in-out infinite alternate; }
+.signup-page.day .signup-sky::before { opacity: 1; }
+.signup-page.day .signup-sun { bottom: calc(100% - 210px); }
+@keyframes twinkle { from { opacity: .55; } to { opacity: .95; } }
+
+/* The card goes dark at night, back to light by day, and drops down to make room for the sun. */
+.signup-card { transition: background-color 2s ease, border-color 2s ease, color 2s ease, margin-top 2.6s cubic-bezier(.22, .7, .25, 1); }
+.signup-page.night .signup-card { background: #1d2846; border-color: #2c3b63; color: #eef0f5; }
+.signup-page.night .signup-card .muted { color: #b8c1d6; }
+.signup-page.night .signup-card a:not(.btn), .signup-page.night .signup-card .link-btn { color: #f3d58a; }
+.signup-page.night .signup-card input { background: #121a30; border-color: #34456f; color: #fff; }
+.signup-page.night .signup-card .btn.ghost { color: #eef0f5; }
+.signup-page.night .signup-card .error { color: #ffb4a6; }
+.signup-page.day .signup-card { margin-top: 240px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .signup-sky, .signup-sky::before, .signup-sky::after, .signup-sun, .signup-card { transition: none; animation: none; }
+}
 .member-bar > div:last-child { display: flex; flex-wrap: wrap; gap: 8px; }
 .member-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
 .library { display: grid; gap: 24px; grid-template-columns: 280px 1fr; align-items: start; }

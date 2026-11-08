@@ -19,6 +19,17 @@ const INSTRUMENTS = [
   "Violin I", "Violin II", "Viola", "Cello", "Double Bass",
 ];
 
+// Turns a Supabase sign-in/sign-up error into something a member can act on. When Supabase
+// can't send an email (e.g. the email settings are wrong) it returns an error with no message.
+function friendlyError(err) {
+  const message = String(err?.message ?? "").trim();
+  if (/rate limit/i.test(message)) return "Too many emails have been sent in the last hour. Please try again a bit later.";
+  if (!message || message === "{}" || /sending.*email|smtp/i.test(message) || err?.status >= 500) {
+    return "Sorry, we couldn't send the email just now. Please try again later, or contact williamtroymusic@gmail.com.";
+  }
+  return message;
+}
+
 // Small helper for building elements safely (text is never treated as HTML).
 function el(tag, props = {}, ...children) {
   const node = Object.assign(document.createElement(tag), props);
