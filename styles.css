@@ -121,7 +121,7 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 
 /* Members area */
 .members-main { padding: 40px 0 80px; min-height: 70vh; }
-.members-main .wrap { max-width: 1400px; }  /* room for the music plus the controls column */
+.members-main .wrap { max-width: 1680px; }  /* room for the music plus the controls column */
 .login-card { max-width: 420px; margin: 40px auto; }
 .error { color: #b42318; font-size: .9rem; min-height: 1.2em; margin: 0; }
 .auth-links { margin: 0; font-size: .92rem; color: var(--muted); }
@@ -178,7 +178,7 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 }
 .member-bar > div:last-child { display: flex; flex-wrap: wrap; gap: 8px; }
 .member-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
-.library { display: grid; gap: 24px; grid-template-columns: 280px 1fr; align-items: start; }
+.library { display: grid; gap: 20px; grid-template-columns: 230px minmax(0, 1fr); align-items: start; }
 @media (max-width: 820px) { .library { grid-template-columns: 1fr; } }
 .piece { margin-bottom: 18px; }
 .piece h3 { font-size: 1.2rem; margin-bottom: 2px; }
@@ -189,7 +189,7 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 .viewer-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
 /* Music on the left, playback controls in a column on the right that stays in view
    while a long piece scrolls. */
-.viewer-body { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 20px; align-items: start; }
+.viewer-body { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 16px; align-items: start; }
 .controls { position: sticky; top: 88px; max-height: calc(100vh - 104px); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; font-size: .9rem; }
 .controls label { display: flex; flex-direction: column; gap: 6px; font-weight: 500; }
 .controls label.inline { flex-direction: row; align-items: center; gap: 8px; }

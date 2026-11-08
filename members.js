@@ -8,6 +8,9 @@ let osmd = null;
 let current = null;   // { piece, part }
 let playback = null;  // { ctx, timers }
 const partCache = new Map();
+// The music is drawn a little smaller on screen so more bars fit on each line
+// (PDFs and printouts stay full size).
+const SCREEN_ZOOM = 0.85;
 
 function show(view) {
   for (const v of VIEWS) $(v).hidden = v !== view;
@@ -235,6 +238,7 @@ async function selectPart(piece, part, btn) {
     // parts split from a full score before this was fixed don't have it.
     await osmd.load(withDeclaration(xml));
     useLibraryDetails(osmd, piece, part);
+    osmd.zoom = SCREEN_ZOOM;
     osmd.render();
   } catch (err) {
     osmd = null;
@@ -344,6 +348,7 @@ $("print-part").addEventListener("click", () => busyButton("print-part", "Prepar
 }, "Sorry, the part couldn't be printed"));
 
 // ---------- Playback ----------
+
 
 const STEPS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
