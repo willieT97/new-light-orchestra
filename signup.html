@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Members sign up · New Light Orchestra</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="logo" href="index.html">New Light Orchestra</a>
+      <nav>
+        <a href="index.html#concerts">Concerts</a>
+        <a href="index.html#rehearsals">Rehearsals</a>
+        <a href="index.html#join">Join</a>
+        <a href="index.html#contact">Contact</a>
+        <a href="members.html" aria-current="true">Members area</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="members-main">
+    <div class="wrap">
+      <div class="card login-card signup-card">
+        <div class="eyebrow">Members sign up</div>
+
+        <!-- Step 1 -->
+        <section id="step-registered">
+          <h2>Have you registered your interest?</h2>
+          <p class="muted">New players first fill in the "Register your interest" form. Once the orchestra has added you as a member, you can set up your account here.</p>
+          <div class="signup-choices">
+            <button class="btn" type="button" data-step="step-email">Yes, I have</button>
+            <a class="btn ghost" href="index.html#join">No, register my interest</a>
+          </div>
+        </section>
+
+        <!-- Step 2 -->
+        <section id="step-email" hidden>
+          <h2>Check you've been added</h2>
+          <p class="muted">Enter the email address you used when you registered your interest.</p>
+          <form id="email-form">
+            <label>Email <input name="email" type="email" autocomplete="email" required></label>
+            <p class="error" id="email-error"></p>
+            <button class="btn" type="submit">Confirm</button>
+          </form>
+          <p class="auth-links"><button class="link-btn" type="button" data-step="step-registered">Back</button></p>
+        </section>
+
+        <!-- Step 3a: not added yet -->
+        <section id="step-not-listed" hidden>
+          <h2>You haven't been added yet</h2>
+          <p><strong class="signup-email"></strong> isn't on the members list yet.</p>
+          <p class="muted">After you register your interest, the orchestra's librarian adds you as a member. If you registered recently, please check back soon. If you think something's wrong, or you used a different email, contact <a href="mailto:williamtroymusic@gmail.com">williamtroymusic@gmail.com</a>.</p>
+          <p class="auth-links"><button class="link-btn" type="button" data-step="step-email">Try a different email</button></p>
+        </section>
+
+        <!-- Step 3b: already set up -->
+        <section id="step-has-account" hidden>
+          <h2>You already have an account</h2>
+          <p><strong class="signup-email"></strong> is already set up. Sign in with your password, or use "Forgot your password?" on the sign-in page to choose a new one.</p>
+          <a class="btn" href="members.html">Go to sign in</a>
+        </section>
+
+        <!-- Step 3c: choose a password -->
+        <section id="step-password" hidden>
+          <h2>You're on the members list!</h2>
+          <p>Choose a password for <strong class="signup-email"></strong>.</p>
+          <form id="password-form">
+            <label>Password <input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
+            <label>Type it again <input name="confirm" type="password" autocomplete="new-password" minlength="8" required></label>
+            <p class="muted small-print">At least 8 characters.</p>
+            <p class="error" id="password-error"></p>
+            <button class="btn" type="submit">Create my account</button>
+          </form>
+        </section>
+
+        <!-- Step 4 -->
+        <section id="step-done" hidden>
+          <h2>Check your email</h2>
+          <p>We've sent an email to <strong class="signup-email"></strong>. Click the link in it to confirm your address, and you'll come straight into the members area, signed in.</p>
+          <p class="muted">After that, you just sign in with your email and password. If it hasn't arrived in a few minutes, check your spam folder.</p>
+        </section>
+
+        <p class="error" id="not-connected" hidden>Sign-up isn't available right now. Please try again later.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 New Light Orchestra</span>
+      <span><a href="members.html">Members area</a></span>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.0/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="signup.js"></script>
+</body>
+</html>

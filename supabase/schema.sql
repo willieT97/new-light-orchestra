@@ -129,6 +129,26 @@ create policy "Admins delete music files" on storage.objects
   for delete to authenticated
   using (bucket_id = 'music' and public.is_admin());
 
+-- ---------- Members sign-up page ----------
+-- Lets the sign-up page check one email without seeing the members list:
+-- 'not_listed', 'ready' (can choose a password) or 'has_account'.
+
+create or replace function public.member_signup_status(check_email text)
+returns text
+language sql stable security definer set search_path = '' as $$
+  select case
+    when not exists (select 1 from public.members where email = lower(trim(check_email)))
+      then 'not_listed'
+    when exists (select 1 from auth.users
+                 where lower(email) = lower(trim(check_email)) and email_confirmed_at is not null)
+      then 'has_account'
+    else 'ready'
+  end;
+$$;
+
+revoke all on function public.member_signup_status(text) from public;
+grant execute on function public.member_signup_status(text) to anon, authenticated;
+
 -- ---------- First admin ----------
 -- Run this separately, with your own details (email in lower case):
 --

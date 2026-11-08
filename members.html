@@ -20,7 +20,7 @@
         <a href="index.html#rehearsals">Rehearsals</a>
         <a href="index.html#join">Join</a>
         <a href="index.html#contact">Contact</a>
-        <a class="btn-members" href="members.html">Members</a>
+        <a href="members.html" aria-current="page">Members area</a>
       </nav>
     </div>
   </header>
@@ -38,14 +38,6 @@
           <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
           <button class="btn" type="submit">Sign in</button>
           <p class="auth-links"><button type="button" class="link-btn" data-show="forgot-form">Forgot your password?</button></p>
-        </form>
-
-        <form id="signup-form" hidden>
-          <p class="muted">Use the email address the orchestra has on its members list. We'll send you one email to confirm it's yours. After that, you just sign in with your password.</p>
-          <label>Email <input name="email" type="email" autocomplete="email" required></label>
-          <label>Choose a password <input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
-          <label>Type it again <input name="confirm" type="password" autocomplete="new-password" minlength="8" required></label>
-          <button class="btn" type="submit">Create account</button>
         </form>
 
         <form id="forgot-form" hidden>

@@ -26,9 +26,9 @@ function showMessage(title, text, canSignOut = false) {
 let recovering = /type=recovery/.test(location.hash);
 const backToSite = () => location.origin + location.pathname;
 
+// New accounts are set up on signup.html, which first checks the librarian has added the email.
 const AUTH_FORMS = {
   "signin-form": "Sign in",
-  "signup-form": "Create your account",
   "forgot-form": "Reset your password",
   "newpass-form": "Choose a new password",
 };
@@ -45,7 +45,7 @@ function showAuth(form, notice = "") {
   $("auth-error").textContent = "";
   $("auth-notice").textContent = notice;
   $("auth-notice").hidden = !notice;
-  if (form === "signin-form") $("auth-switch").replaceChildren("First time here? ", linkButton("signup-form", "Create your account"));
+  if (form === "signin-form") $("auth-switch").replaceChildren("New member? ", el("a", { href: "signup.html", textContent: "Set up your account" }));
   else if (form === "newpass-form") $("auth-switch").replaceChildren(member ? linkButton("library", "Cancel") : "");
   else $("auth-switch").replaceChildren(linkButton("signin-form", "Back to sign in"));
   show("login-view");
@@ -87,28 +87,9 @@ $("signin-form").addEventListener("submit", e => {
       throw new Error("Please confirm your email first: click the link in the email we sent when you created your account.");
     }
     if (/invalid login/i.test(error.message)) {
-      throw new Error("That email and password don't match. New here? Create your account. Forgotten your password? Reset it below.");
+      throw new Error("That email and password don't match. New member? Set up your account below. Forgotten your password? Reset it below.");
     }
     throw error;
-  });
-});
-
-$("signup-form").addEventListener("submit", e => {
-  e.preventDefault();
-  submitAuth(e.target, async f => {
-    checkPasswords(f);
-    const email = f.email.value.trim().toLowerCase();
-    const { data, error } = await sb.auth.signUp({
-      email, password: f.password.value, options: { emailRedirectTo: backToSite() },
-    });
-    if (error && /already registered/i.test(error.message)) {
-      throw new Error("That email already has an account. Sign in instead, or use “Forgot your password?” to set a new one.");
-    }
-    if (error) throw error;
-    f.reset();
-    if (!data.session) {
-      showAuth("signin-form", `Nearly there! We've sent an email to ${email}. Click the link in it to confirm your address, and you'll come straight back here, signed in.`);
-    }
   });
 });
 

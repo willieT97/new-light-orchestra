@@ -30,7 +30,8 @@ a { color: inherit; }
 nav { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: .92rem; }
 nav a { text-decoration: none; opacity: .85; }
 nav a:hover { opacity: 1; }
-nav .btn-members { background: var(--gold); color: var(--navy); padding: 6px 14px; border-radius: 999px; font-weight: 600; opacity: 1; }
+/* The section you're in (the members area) shows as a gold pill. */
+nav a[aria-current] { background: var(--gold); color: var(--navy); padding: 6px 14px; border-radius: 999px; font-weight: 600; opacity: 1; }
 
 /* Hero */
 .hero { position: relative; overflow: hidden; background: linear-gradient(160deg, var(--navy) 0%, #2a3758 60%, #6b5a3a 130%); color: #fff; padding: 250px 0 110px; text-align: center; }
@@ -126,6 +127,11 @@ footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; g
 .auth-links { margin: 0; font-size: .92rem; color: var(--muted); }
 .auth-links .link-btn { color: var(--navy); }
 .login-card .notice { margin: 0 0 16px; }
+.signup-card { max-width: 520px; }
+.signup-card section { display: grid; gap: 14px; padding: 0; }
+.signup-card h2 { margin: 0; }
+.signup-card p { margin: 0; }
+.signup-choices { display: flex; flex-wrap: wrap; gap: 10px; }
 .member-bar > div:last-child { display: flex; flex-wrap: wrap; gap: 8px; }
 .member-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
 .library { display: grid; gap: 24px; grid-template-columns: 280px 1fr; align-items: start; }
