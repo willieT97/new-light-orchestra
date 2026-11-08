@@ -227,7 +227,8 @@ async function selectPart(piece, part, btn) {
 
   $("score").replaceChildren();
   osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay($("score"), {
-    autoResize: true, drawTitle: false, drawPartNames: false, followCursor: true,
+    // The page header above already shows the title and composer, so the music shows neither.
+    autoResize: true, drawTitle: false, drawComposer: false, drawLyricist: false, drawPartNames: false, followCursor: true,
   });
   try {
     // The score display only accepts text that starts with the <?xml?> declaration;
@@ -258,9 +259,6 @@ function useLibraryDetails(display, piece, part) {
   sheet.TitleString = piece.title;
   sheet.SubtitleString = part.instrument;
   sheet.ComposerString = piece.composer || "";
-  // Scores often name the composer as lyricist too, which prints the same name on both sides.
-  const sameName = s => String(s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
-  if (sameName(sheet.LyricistString) === sameName(sheet.ComposerString)) sheet.LyricistString = "";
   display.EngravingRules.RenderMeasureNumbersOnlyAtSystemStart = true;
   display.EngravingRules.SlurPlacementUseSkyBottomLine = true;
 }
@@ -286,7 +284,7 @@ $("download-pdf").addEventListener("click", async () => {
     await loadScript("https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js");
     const pageView = new opensheetmusicdisplay.OpenSheetMusicDisplay(box, {
       autoResize: false, backend: "svg", pageFormat: "A4_P", pageBackgroundColor: "#FFFFFF",
-      drawTitle: true, drawSubtitle: true, drawComposer: true, drawPartNames: false,
+      drawTitle: true, drawSubtitle: true, drawComposer: true, drawLyricist: false, drawPartNames: false,
       drawMetronomeMarks: false,  // their "= 100" text doesn't survive the PDF conversion
     });
     await pageView.load(withDeclaration(await loadPart(part.file_path)));
