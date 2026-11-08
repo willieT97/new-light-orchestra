@@ -361,15 +361,25 @@ $("print-part").addEventListener("click", () => busyButton("print-part", "Prepar
     document.body.append(frame);
     const doc = frame.contentDocument;
     doc.open();
+    // Normal print margins, with each page of music scaled to fit inside them. (Making the
+    // page exactly A4 with no margins overflows in Safari, which keeps its own margins:
+    // the title gets cut off and a blank page follows.)
     doc.write(`<!doctype html><style>
-      @page { size: A4; margin: 0; }
-      html, body { margin: 0; background: #fff; }
-      svg { display: block; width: 210mm; height: 297mm; break-after: page; }
-      svg:last-child { break-after: auto; }
+      @page { size: A4 portrait; margin: 12mm; }
+      html, body { margin: 0; padding: 0; background: #fff; }
+      svg { display: block; width: 100%; height: auto; break-after: page; page-break-after: always; }
+      svg:last-child { break-after: auto; page-break-after: auto; }
     </style>`);
     doc.close();
     doc.title = `${piece.title} - ${part.instrument}`;  // also the suggested name if saved as PDF
-    for (const svg of pages) doc.body.append(doc.importNode(svg, true));
+    for (const svg of pages) {
+      const copy = doc.importNode(svg, true);
+      // Let the page's own proportions (its viewBox) set the height from the width.
+      if (!copy.getAttribute("viewBox")) copy.setAttribute("viewBox", `0 0 ${svg.getAttribute("width")} ${svg.getAttribute("height")}`);
+      copy.removeAttribute("width");
+      copy.removeAttribute("height");
+      doc.body.append(copy);
+    }
     await new Promise(r => setTimeout(r, 100));  // let the frame lay out before printing
     printFrame(frame.contentWindow);
     setTimeout(() => frame.remove(), 60000);  // printing is done with it long before this
