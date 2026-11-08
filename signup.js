@@ -11,6 +11,7 @@ function showStep(step) {
   for (const s of STEPS) $(s).hidden = s !== step;
   document.body.classList.toggle("night", NIGHT_STEPS.includes(step));
   document.body.classList.toggle("day", step === "step-done");
+  $("signup-eyebrow").textContent = step === "step-done" ? "Welcome to New Light Orchestra" : "Members sign up";
   document.querySelectorAll(".signup-email").forEach(e => { e.textContent = email; });
   $("email-error").textContent = "";
   $("password-error").textContent = "";
