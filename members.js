@@ -402,10 +402,12 @@ function scheduleNotes(ctx, notes, secPerBeat, volume, startAt, destination) {
   }
 }
 
-// Metronome clicks from `from` to `end` seconds, with a higher click on the first beat of each bar.
-function scheduleClicks(ctx, time, secPerBeat, from, end, destination) {
+// Metronome clicks between `from` and `end` seconds, on the beat grid that has a bar line at
+// `barLine`, with a higher click on the first beat of each bar.
+function scheduleClicks(ctx, time, secPerBeat, barLine, from, end, destination) {
   const beatSec = secPerBeat * 4 / time.beatType;
-  for (let i = 0, at = from; at < end - 0.01; i++, at += beatSec) {
+  for (let i = 0, at = barLine; at < end - 0.01; i++, at += beatSec) {
+    if (at < from - 0.01) continue;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.frequency.value = i % time.beats === 0 ? 1600 : 1100;
@@ -519,10 +521,18 @@ async function play({ repeat = false } = {}) {
 
   // Count-in: bars of clicks (always heard) before the music starts, with the beat
   // number shown on screen, so the player has time to get their instrument up.
+  // A pickup (a short first bar, e.g. one beat before bar 1) is part of the count-in's last
+  // bar: in 4/4 with a one-beat pickup the count goes 1-2-3-4, 1-2-3 and the pickup is on 4.
   const beatSec = secPerBeat * 4 / main.time.beatType;
-  const countBeats = +$("countin").value * main.time.beats;  // before every round, loops too
+  const barQuarters = main.time.beats * 4 / main.time.beatType;
+  const first = main.measures[0];
+  const firstLength = first ? first.end - first.start : barQuarters;
+  const pickup = span.from === first?.start && firstLength < barQuarters - 1e-6 ? firstLength : 0;  // in quarters
+  const countBars = +$("countin").value;  // before every round, loops too
   const clickFrom = ctx.currentTime + 0.15;
-  const startAt = clickFrom + countBeats * beatSec;
+  const startAt = clickFrom + (countBars ? countBars * barQuarters - pickup : 0) * secPerBeat;
+  const firstDownbeat = startAt + pickup * secPerBeat;
+  const barLine = firstDownbeat - Math.max(countBars, 1) * barQuarters * secPerBeat;  // the grid every click sits on
   playback = { ctx, timers: [], groups };
   $("play").textContent = "■ Stop";
 
@@ -530,12 +540,13 @@ async function play({ repeat = false } = {}) {
   for (const part of parts) {
     scheduleNotes(ctx, part.notes, secPerBeat, 0.22, startAt, part.path === mine ? groups.mine : groups.others);
   }
-  scheduleClicks(ctx, main.time, secPerBeat, clickFrom, startAt, groups.countIn);
-  scheduleClicks(ctx, main.time, secPerBeat, startAt, startAt + end * secPerBeat, groups.clicks);
+  scheduleClicks(ctx, main.time, secPerBeat, barLine, clickFrom, startAt, groups.countIn);
+  scheduleClicks(ctx, main.time, secPerBeat, barLine, startAt, startAt + end * secPerBeat, groups.clicks);
 
-  const untilClicks = (clickFrom - ctx.currentTime) * 1000;
-  for (let i = 0; i < countBeats; i++) {
-    playback.timers.push(setTimeout(() => { $("count-display").textContent = (i % main.time.beats) + 1; }, untilClicks + i * beatSec * 1000));
+  for (let i = 0, at = barLine; at < startAt - 0.01; i++, at += beatSec) {
+    if (at < clickFrom - 0.01) continue;
+    const beat = (i % main.time.beats) + 1;
+    playback.timers.push(setTimeout(() => { $("count-display").textContent = beat; }, (at - ctx.currentTime) * 1000));
   }
   playback.timers.push(setTimeout(() => { $("count-display").textContent = ""; }, (startAt - ctx.currentTime) * 1000));
 
