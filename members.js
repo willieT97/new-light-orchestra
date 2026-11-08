@@ -251,12 +251,18 @@ function withDeclaration(xml) {
 
 // Show the title and composer from the library, not whatever the file says
 // (MuseScore leaves "Untitled score" and "Composer / arranger" if they weren't filled in).
-// Also numbers bars only at the start of each line, as printed parts do.
+// Also numbers bars only at the start of each line, as printed parts do, and lets slurs steer
+// around other markings (tenuto lines, accents) instead of running through them.
 function useLibraryDetails(display, piece, part) {
-  display.Sheet.TitleString = piece.title;
-  display.Sheet.SubtitleString = part.instrument;
-  display.Sheet.ComposerString = piece.composer || "";
+  const sheet = display.Sheet;
+  sheet.TitleString = piece.title;
+  sheet.SubtitleString = part.instrument;
+  sheet.ComposerString = piece.composer || "";
+  // Scores often name the composer as lyricist too, which prints the same name on both sides.
+  const sameName = s => String(s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  if (sameName(sheet.LyricistString) === sameName(sheet.ComposerString)) sheet.LyricistString = "";
   display.EngravingRules.RenderMeasureNumbersOnlyAtSystemStart = true;
+  display.EngravingRules.SlurPlacementUseSkyBottomLine = true;
 }
 
 function loadScript(src) {
