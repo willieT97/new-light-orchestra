@@ -270,18 +270,13 @@ function loadScript(src) {
   });
 }
 
-// Lays the part out on A4 pages (with title, instrument and composer) and saves it as a PDF.
-$("download-pdf").addEventListener("click", async () => {
-  if (!current) return;
+// Lays the current part out as A4 pages (title, instrument and composer at the top) in a
+// hidden box, and gives `use` the page SVGs. Shared by Download PDF and Print.
+async function withA4Pages(use) {
   const { piece, part } = current;
-  const button = $("download-pdf");
-  button.disabled = true;
-  button.textContent = "Making PDF…";
   const box = el("div", { className: "pdf-render" });
   document.body.append(box);
   try {
-    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-    await loadScript("https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js");
     const pageView = new opensheetmusicdisplay.OpenSheetMusicDisplay(box, {
       autoResize: false, backend: "svg", pageFormat: "A4_P", pageBackgroundColor: "#FFFFFF",
       drawTitle: true, drawSubtitle: true, drawComposer: true, drawLyricist: false, drawPartNames: false,
@@ -290,30 +285,63 @@ $("download-pdf").addEventListener("click", async () => {
     await pageView.load(withDeclaration(await loadPart(part.file_path)));
     useLibraryDetails(pageView, piece, part);
     pageView.render();
+    await use([...box.querySelectorAll("svg")], piece, part);
+  } finally {
+    box.remove();
+  }
+}
 
+// Runs `action` with the button showing `busyText`, and reports a failure.
+async function busyButton(id, busyText, action, failure) {
+  if (!current) return;
+  const button = $(id), label = button.textContent;
+  button.disabled = true;
+  button.textContent = busyText;
+  try { await action(); }
+  catch (err) { alert(`${failure}: ${err.message}`); }
+  finally { button.disabled = false; button.textContent = label; }
+}
+
+$("download-pdf").addEventListener("click", () => busyButton("download-pdf", "Making PDF…", async () => {
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  await loadScript("https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.3/dist/svg2pdf.umd.min.js");
+  await withA4Pages(async (pages, piece, part) => {
     const pdf = new window.jspdf.jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const pages = [...box.querySelectorAll("svg")];
     for (const [i, svg] of pages.entries()) {
       if (i > 0) pdf.addPage("a4", "portrait");
       await pdf.svg(svg, { x: 0, y: 0, width: 210, height: 297 });
     }
     pdf.save(`${piece.title} - ${part.instrument}.pdf`);
-  } catch (err) {
-    alert(`Sorry, the PDF couldn't be made: ${err.message}`);
-  } finally {
-    box.remove();
-    button.disabled = false;
-    button.textContent = "Download PDF";
-  }
-});
+  });
+}, "Sorry, the PDF couldn't be made"));
 
-$("download").addEventListener("click", async () => {
-  if (!current) return;
-  const name = `${current.piece.title} - ${current.part.instrument}.musicxml`;
-  const { data, error } = await sb.storage.from("music").createSignedUrl(current.part.file_path, 60, { download: name });
-  if (error) { alert(error.message); return; }
-  location.href = data.signedUrl;
-});
+function printFrame(win) {
+  win.focus();
+  win.print();
+}
+
+// Puts the same A4 pages in a hidden frame and opens the browser's print window for it.
+$("print-part").addEventListener("click", () => busyButton("print-part", "Preparing…", async () => {
+  await withA4Pages(async (pages, piece, part) => {
+    const frame = el("iframe", { title: "Print", ariaHidden: "true" });
+    frame.style.cssText = "position: fixed; right: 0; bottom: 0; width: 0; height: 0; border: 0;";
+    document.body.append(frame);
+    const doc = frame.contentDocument;
+    doc.open();
+    doc.write(`<!doctype html><style>
+      @page { size: A4; margin: 0; }
+      html, body { margin: 0; background: #fff; }
+      svg { display: block; width: 210mm; height: 297mm; break-after: page; }
+      svg:last-child { break-after: auto; }
+    </style>`);
+    doc.close();
+    doc.title = `${piece.title} - ${part.instrument}`;  // also the suggested name if saved as PDF
+    for (const svg of pages) doc.body.append(doc.importNode(svg, true));
+    await new Promise(r => setTimeout(r, 100));  // let the frame lay out before printing
+    printFrame(frame.contentWindow);
+    setTimeout(() => frame.remove(), 60000);  // printing is done with it long before this
+  });
+}, "Sorry, the part couldn't be printed"));
 
 // ---------- Playback ----------
 
@@ -324,12 +352,26 @@ function parseMusicXML(xml) {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   let divisions = 1, tempo = null, t = 0, lastStart = 0, simple = true, time = null, transpose = 0;
   const notes = [];
-  const measures = [];  // { label, start, end } per bar, for practising a section
+  // One entry per bar: { label, start, end } plus its repeat signs and 1st/2nd ending, if any.
+  const measures = [];
   const openTies = new Map();  // voice:pitch -> the note a tie is still holding on
+  let ending = null;  // the numbers of the 1st/2nd... ending we're inside, e.g. [1] or [1, 2]
   for (const measure of doc.querySelectorAll("part > measure")) {
     const measureStart = t;
-    let measureEnd = t;
+    let measureEnd = t, forward = false, backward = false, times = 2, endingStops = false;
     for (const node of measure.children) {
+      if (node.tagName === "barline") {
+        const repeat = node.querySelector("repeat");
+        if (repeat?.getAttribute("direction") === "forward") forward = true;
+        if (repeat?.getAttribute("direction") === "backward") {
+          backward = true;
+          times = parseInt(repeat.getAttribute("times"), 10) || 2;
+        }
+        const e = node.querySelector("ending");
+        if (e?.getAttribute("type") === "start") ending = (e.getAttribute("number") ?? "1").split(/[,\s]+/).filter(Boolean).map(Number);
+        else if (e) endingStops = true;
+        continue;
+      }
       if (node.tagName === "attributes") {
         const d = node.querySelector("divisions");
         if (d) divisions = +d.textContent;
@@ -353,7 +395,7 @@ function parseMusicXML(xml) {
         const p = node.querySelector("pitch");
         const midi = p ? 12 * (+p.querySelector("octave").textContent + 1)
           + STEPS[p.querySelector("step").textContent] + +(p.querySelector("alter")?.textContent ?? 0) + transpose : null;
-        const note = { start, dur, midi, chord };
+        const note = { start, dur, midi, chord, bar: measures.length };
         // A tied note is one sound: lengthen the note it continues instead of playing it
         // again. It stays in the list (silent) so the score cursor still steps onto it.
         const key = `${node.querySelector("voice")?.textContent ?? 1}:${midi}`;
@@ -371,7 +413,11 @@ function parseMusicXML(xml) {
     // Several voices in one bar step back and forth in time; the bar ends at the furthest point.
     t = measureEnd;
     const label = parseInt(measure.getAttribute("number"), 10);
-    measures.push({ label: Number.isFinite(label) ? label : measures.length + 1, start: measureStart, end: measureEnd });
+    measures.push({
+      label: Number.isFinite(label) ? label : measures.length + 1, start: measureStart, end: measureEnd,
+      forward, backward, times, ending,
+    });
+    if (endingStops) ending = null;
   }
   return { notes, measures, tempo: tempo ?? 100, simple, time: time ?? { beats: 4, beatType: 4 } };
 }
@@ -440,26 +486,71 @@ function tidyBars(changed) {
   $("to-bar").value = to;
 }
 
-// The chosen bars as a time span (in quarter notes) of the given part.
-function sectionSpan(measures) {
+// The bars of the chosen section in the order they're played: at a :| it goes back to the
+// |: (or the section's start), as many times as marked, and on each pass it takes the right
+// 1st/2nd ending. Returns indexes into `measures`.
+function playingOrder(measures) {
   const from = +$("from-bar").value, to = +$("to-bar").value;
-  const first = measures.find(m => m.label >= from) ?? measures[0];
-  const last = [...measures].reverse().find(m => m.label <= to) ?? measures.at(-1);
-  return { from: first.start, to: Math.max(last.end, first.end) };
+  let lo = measures.findIndex(m => m.label >= from);
+  if (lo < 0) lo = 0;
+  let hi = measures.length - 1;
+  while (hi > lo && measures[hi].label > to) hi--;
+
+  const order = [], repeatsDone = new Map();
+  let i = lo, pass = 1, start = lo, jumpedBack = false, lastWasEnding = false;
+  while (i <= hi && order.length < 5000) {
+    const m = measures[i];
+    // A new repeated passage starts at a |:, or straight after the last ending of the previous one.
+    if (!jumpedBack && (m.forward || (lastWasEnding && !m.ending))) { start = i; pass = 1; }
+    jumpedBack = false;
+    if (m.ending && !m.ending.includes(pass)) { i++; continue; }  // an ending for another time round
+    order.push(i);
+    lastWasEnding = Boolean(m.ending);
+    if (m.backward) {
+      const done = repeatsDone.get(i) ?? 1;
+      if (done < m.times) {
+        repeatsDone.set(i, done + 1);
+        pass = done + 1;
+        i = start;
+        jumpedBack = true;
+        continue;
+      }
+      start = i + 1;
+      pass = 1;
+    }
+    i++;
+  }
+  return order;
 }
 
-// Just the notes inside the span, moved so the span starts at time 0.
-function notesIn(notes, span) {
-  const eps = 1e-6;
-  return notes
-    .filter(n => n.start >= span.from - eps && n.start < span.to - eps)
-    .map(n => ({
-      ...n,
-      start: n.start - span.from,
-      dur: Math.min(n.dur, span.to - n.start),
-      // A note tied over from before the section still needs to sound when the section starts.
-      tied: n.tied && n.start > span.from + eps,
-    }));
+// A part's notes laid end to end in playing order, starting at time 0 (in quarter notes).
+function notesInOrder(part, order) {
+  const byBar = new Map();
+  for (const n of part.notes) {
+    if (!byBar.has(n.bar)) byBar.set(n.bar, []);
+    byBar.get(n.bar).push(n);
+  }
+  const notes = [];
+  let t = 0;
+  order.forEach((bar, k) => {
+    const m = part.measures[bar];
+    if (!m) return;
+    const cameFromElsewhere = k === 0 || order[k - 1] !== bar - 1;  // section start or a jump back
+    const goesStraightOn = order[k + 1] === bar + 1;
+    for (const n of byBar.get(bar) ?? []) {
+      notes.push({
+        ...n,
+        start: t + n.start - m.start,
+        written: n.start,  // where it sits in the score, for the moving marker
+        // A note held over the bar line is cut at the bar if the music jumps somewhere else.
+        dur: goesStraightOn ? n.dur : Math.min(n.dur, m.end - n.start),
+        // A tied note at the start of a bar we jumped to has nothing before it holding it on.
+        tied: n.tied && !(cameFromElsewhere && Math.abs(n.start - m.start) < 1e-6),
+      });
+    }
+    t += m.end - m.start;
+  });
+  return { notes, length: t };
 }
 
 $("whole-piece").addEventListener("click", wholePiece);
@@ -495,8 +586,8 @@ async function play({ repeat = false } = {}) {
   }
   const parsed = paths.map((path, i) => ({ path, ...parseMusicXML(texts[i]) }));
   const main = parsed.find(p => p.path === mine);
-  const span = sectionSpan(main.measures);
-  const parts = parsed.map(p => ({ ...p, notes: notesIn(p.notes, span) }));
+  const order = playingOrder(main.measures);
+  const parts = parsed.map(p => ({ ...p, ...notesInOrder(p, order) }));
   const mainNotes = parts.find(p => p.path === mine).notes;
 
   const secPerBeat = 60 / +$("tempo").value;
@@ -525,7 +616,7 @@ async function play({ repeat = false } = {}) {
   const barQuarters = main.time.beats * 4 / main.time.beatType;
   const first = main.measures[0];
   const firstLength = first ? first.end - first.start : barQuarters;
-  const pickup = span.from === first?.start && firstLength < barQuarters - 1e-6 ? firstLength : 0;  // in quarters
+  const pickup = order[0] === 0 && firstLength < barQuarters - 1e-6 ? firstLength : 0;  // in quarters
   const countBars = +$("countin").value;  // before every round, loops too
   const clickFrom = ctx.currentTime + 0.15;
   const startAt = clickFrom + (countBars ? countBars * barQuarters - pickup : 0) * secPerBeat;
@@ -534,7 +625,7 @@ async function play({ repeat = false } = {}) {
   playback = { ctx, timers: [], groups };
   $("play").textContent = "■ Stop";
 
-  const end = span.to - span.from;
+  const end = parts.find(p => p.path === mine).length;  // in quarters, repeats included
   for (const part of parts) {
     scheduleNotes(ctx, part.notes, secPerBeat, 0.22, startAt, part.path === mine ? groups.mine : groups.others);
   }
@@ -550,18 +641,39 @@ async function play({ repeat = false } = {}) {
 
   // Move the score cursor along with the member's part (single-voice parts only).
   if (osmd && main.simple) {
+    // The marker only knows how to step forward through the score as written, so for each
+    // note it's moved to that note's written position, jumping back at repeats.
     osmd.cursor.show();
-    osmd.cursor.reset();
-    // Step the cursor forward to the first bar of the section (its timestamps are in whole notes).
-    const it = osmd.cursor.Iterator;
-    while (!it.EndReached && it.currentTimeStamp.RealValue * 4 < span.from - 1e-6) osmd.cursor.next();
-    const onsets = mainNotes.filter(n => !n.chord).map(n => n.start);
+    const steps = cursorSteps();  // written time (quarters) of each marker position
+    const stepFor = written => {
+      const i = steps.findIndex(t => t >= written - 1e-6);
+      return i < 0 ? steps.length - 1 : i;
+    };
+    let at = 0;
+    const moveTo = target => {
+      if (target < at) { osmd.cursor.reset(); at = 0; }
+      while (at < target) { osmd.cursor.next(); at++; }
+    };
+    const onsets = mainNotes.filter(n => !n.chord);
+    moveTo(stepFor(onsets[0]?.written ?? 0));
     const delay = (startAt - ctx.currentTime) * 1000;
-    onsets.slice(1).forEach(s => playback.timers.push(setTimeout(() => osmd.cursor.next(), delay + s * secPerBeat * 1000)));
+    onsets.slice(1).forEach(n => playback.timers.push(setTimeout(() => moveTo(stepFor(n.written)), delay + n.start * secPerBeat * 1000)));
   }
   // At the end of the section: go round again if Loop is ticked, otherwise stop.
   playback.timers.push(setTimeout(() => ($("loop").checked ? play({ repeat: true }) : stop()),
     (startAt - ctx.currentTime + end * secPerBeat) * 1000 + 150));
+}
+
+// Walks the marker through the score once to learn where each of its positions is.
+function cursorSteps() {
+  osmd.cursor.reset();
+  const it = osmd.cursor.Iterator, steps = [];
+  while (!it.EndReached && steps.length < 20000) {
+    steps.push(it.currentTimeStamp.RealValue * 4);  // timestamps are in whole notes
+    osmd.cursor.next();
+  }
+  osmd.cursor.reset();
+  return steps;
 }
 
 function stop() {
