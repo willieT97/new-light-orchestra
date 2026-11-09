@@ -201,7 +201,7 @@ function openPiece(piece, btn) {
   document.querySelectorAll(".piece-btn").forEach(b => b.classList.toggle("active", b === btn));
   const parts = [...piece.parts].sort(scoreOrder);
   const mine = parts.filter(p => sameInstrument(p.instrument, member.instrument));
-  const choices = member.is_admin ? parts : mine;
+  const choices = member.is_admin ? (parts.length > 1 ? [FULL_SCORE, ...parts] : parts) : mine;
 
   if (!choices.length) {
     stop();
@@ -220,9 +220,49 @@ function openPiece(piece, btn) {
   select.replaceChildren(...choices.map((p, i) => el("option", { value: i, textContent: p.instrument })));
   select.onchange = () => selectPart(piece, choices[+select.value]);
   $("part-picker").hidden = choices.length < 2;
-  const first = mine[0] ?? choices[0];
+  const first = mine[0] ?? choices.find(p => !p.full) ?? choices[0];
   select.value = choices.indexOf(first);
   selectPart(piece, first);
+}
+
+// The admin-only "Full score" choice: every part of the piece on its own stave.
+const FULL_SCORE = { instrument: "Full score", full: true };
+
+// The music for a part, or for the full score (put together from the piece's parts).
+async function partXml(piece, part) {
+  return part.full ? fullScoreXml(piece) : loadPart(part.file_path);
+}
+
+// Stitches a piece's single-part files into one score, in orchestral order, each stave
+// named after its instrument. Parts may come from different files, so ids are renumbered.
+async function fullScoreXml(piece) {
+  const parts = [...piece.parts].sort(scoreOrder);
+  const texts = await Promise.all(parts.map(p => loadPart(p.file_path)));
+  const docs = texts.map(t => new DOMParser().parseFromString(withDeclaration(t), "application/xml"));
+  const sources = docs.map(d => [d.querySelector("part-list > score-part"), d.querySelector("score-partwise > part")]);
+
+  const base = docs[0];  // keeps the first part's title, page layout and so on
+  const root = base.documentElement;
+  const list = root.querySelector(":scope > part-list");
+  list.replaceChildren();
+  root.querySelectorAll(":scope > part").forEach(p => p.remove());
+
+  sources.forEach(([scorePart, part], i) => {
+    if (!scorePart || !part) return;
+    const oldId = scorePart.getAttribute("id"), newId = `P${i + 1}`;
+    const sp = base.importNode(scorePart, true), pt = base.importNode(part, true);
+    for (const node of [sp, pt, ...sp.querySelectorAll("[id]"), ...pt.querySelectorAll("[id]")]) {
+      const id = node.getAttribute("id");
+      if (id === oldId) node.setAttribute("id", newId);
+      else if (id?.startsWith(`${oldId}-`)) node.setAttribute("id", newId + id.slice(oldId.length));  // e.g. P1-I1
+    }
+    let name = sp.querySelector("part-name");
+    if (!name) sp.prepend(name = base.createElement("part-name"));
+    name.textContent = parts[i].instrument;
+    list.append(sp);
+    root.append(pt);
+  });
+  return withDeclaration(new XMLSerializer().serializeToString(base));  // adds <?xml?> only if missing
 }
 
 async function loadPart(path) {
@@ -245,7 +285,7 @@ async function selectPart(piece, part) {
 
   let xml;
   try {
-    xml = await loadPart(part.file_path);
+    xml = await partXml(piece, part);
   } catch (err) {
     $("score").replaceChildren(el("p", { className: "error", textContent: `Couldn't load this part: ${err.message}` }));
     return;
@@ -260,7 +300,8 @@ async function selectPart(piece, part) {
   $("score").replaceChildren();
   osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay($("score"), {
     // The page header above already shows the title and composer, so the music shows neither.
-    autoResize: true, drawTitle: false, drawComposer: false, drawLyricist: false, drawPartNames: false, followCursor: true,
+    // A full score names each stave down the left.
+    autoResize: true, drawTitle: false, drawComposer: false, drawLyricist: false, drawPartNames: Boolean(part.full), followCursor: true,
   });
   try {
     // The score display only accepts text that starts with the <?xml?> declaration;
@@ -312,10 +353,10 @@ async function withA4Pages(use) {
   try {
     const pageView = new opensheetmusicdisplay.OpenSheetMusicDisplay(box, {
       autoResize: false, backend: "svg", pageFormat: "A4_P", pageBackgroundColor: "#FFFFFF",
-      drawTitle: true, drawSubtitle: true, drawComposer: true, drawLyricist: false, drawPartNames: false,
+      drawTitle: true, drawSubtitle: true, drawComposer: true, drawLyricist: false, drawPartNames: Boolean(part.full),
       drawMetronomeMarks: false,  // their "= 100" text doesn't survive the PDF conversion
     });
-    await pageView.load(withDeclaration(await loadPart(part.file_path)));
+    await pageView.load(withDeclaration(await partXml(piece, part)));
     useLibraryDetails(pageView, piece, part);
     pageView.render();
     await use([...box.querySelectorAll("svg")], piece, part);
@@ -618,7 +659,8 @@ async function play({ repeat = false } = {}) {
   const previous = repeat ? playback : null;
   if (previous) previous.timers.forEach(clearTimeout);
   else stop();
-  const mine = current.part.file_path;
+  const full = Boolean(current.part.full);
+  const mine = current.part.file_path;  // undefined for the full score
   // Every part is scheduled, so the volume sliders can bring the others in or out mid-play.
   const paths = current.piece.parts.map(p => p.file_path);
   let texts;
@@ -629,10 +671,14 @@ async function play({ repeat = false } = {}) {
     return;
   }
   const parsed = paths.map((path, i) => ({ path, ...parseMusicXML(texts[i]) }));
-  const main = parsed.find(p => p.path === mine);
+  const main = parsed.find(p => p.path === mine) ?? parsed[0];  // its bars set the playing order
   const order = playingOrder(main.measures);
-  const parts = parsed.map(p => ({ ...p, ...notesInOrder(p, order) }));
-  const mainNotes = parts.find(p => p.path === mine).notes;
+  const parts = parsed.map(p => ({ ...p, ...notesInOrder(p, order), isMine: full || p.path === mine }));
+  // The marker follows the member's part, or every part for the full score.
+  const mainNotes = full
+    ? parts.flatMap(p => p.notes).sort((a, b) => a.start - b.start)
+    : parts.find(p => p.path === mine).notes;
+  const simpleEnough = full ? parts.every(p => p.simple) : main.simple;
 
   const secPerBeat = 60 / +$("tempo").value;
   if (repeat && playback !== previous) return;  // stopped while the music was loading
@@ -669,9 +715,9 @@ async function play({ repeat = false } = {}) {
   playback = { ctx, timers: [], groups };
   $("play").textContent = "■ Stop";
 
-  const end = parts.find(p => p.path === mine).length;  // in quarters, repeats included
+  const end = parts.find(p => p.path === main.path).length;  // in quarters, repeats included
   for (const part of parts) {
-    scheduleNotes(ctx, part.notes, secPerBeat, 0.22, startAt, part.path === mine ? groups.mine : groups.others);
+    scheduleNotes(ctx, part.notes, secPerBeat, 0.22, startAt, part.isMine ? groups.mine : groups.others);
   }
   scheduleClicks(ctx, main.time, secPerBeat, barLine, clickFrom, startAt, groups.countIn);
   scheduleClicks(ctx, main.time, secPerBeat, barLine, startAt, startAt + end * secPerBeat, groups.clicks);
@@ -684,7 +730,7 @@ async function play({ repeat = false } = {}) {
   playback.timers.push(setTimeout(() => { $("count-display").textContent = ""; }, (startAt - ctx.currentTime) * 1000));
 
   // Move the score cursor along with the member's part (single-voice parts only).
-  if (osmd && main.simple) {
+  if (osmd && simpleEnough) {
     // The marker only knows how to step forward through the score as written, so for each
     // note it's moved to that note's written position, jumping back at repeats.
     osmd.cursor.show();
@@ -698,7 +744,8 @@ async function play({ repeat = false } = {}) {
       if (target < at) { osmd.cursor.reset(); at = 0; }
       while (at < target) { osmd.cursor.next(); at++; }
     };
-    const onsets = mainNotes.filter(n => !n.chord);
+    // One marker move per moment a note starts (several parts often start together).
+    const onsets = mainNotes.filter((n, i, all) => !n.chord && (i === 0 || n.start !== all[i - 1].start));
     moveTo(stepFor(onsets[0]?.written ?? 0));
     const delay = (startAt - ctx.currentTime) * 1000;
     onsets.slice(1).forEach(n => playback.timers.push(setTimeout(() => moveTo(stepFor(n.written)), delay + n.start * secPerBeat * 1000)));
