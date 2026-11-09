@@ -6,7 +6,7 @@ const VIEWS = ["login-view", "message-view", "library-view"];
 let member = null;    // row from the members table
 let osmd = null;
 let current = null;   // { piece, part }
-let playback = null;  // { ctx, timers }
+let playback = null;  // the round playing now: { ctx, groups, scheduler, frame }
 const partCache = new Map();
 // The music is drawn a little smaller on screen so more bars fit on each line
 // (PDFs and printouts stay full size).
@@ -529,42 +529,69 @@ function parseMusicXML(xml) {
 const sliderGain = (id, max = 1) => (+$(id).value / 100) ** 2 * max;
 const OTHERS_MAX = 0.6;  // the rest of the orchestra is several parts at once
 
-function scheduleNotes(ctx, notes, secPerBeat, volume, startAt, destination) {
-  for (const n of notes) {
-    if (n.midi === null || n.tied) continue;
-    const freq = 440 * 2 ** ((n.midi - 69) / 12);
-    const on = startAt + n.start * secPerBeat;
-    const off = on + n.dur * secPerBeat * 0.95;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "triangle";
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0, on);
-    gain.gain.linearRampToValueAtTime(volume, on + 0.02);
-    gain.gain.setValueAtTime(volume, off - 0.05);
-    gain.gain.linearRampToValueAtTime(0, off);
-    osc.connect(gain).connect(destination);
-    osc.start(on);
-    osc.stop(off + 0.01);
+// ---------- Sound ----------
+
+// One audio player for the whole visit. Phones only let sound start straight from a tap,
+// so it's created (or woken up) inside the Play tap itself, before any music is loaded.
+let audioCtx = null;
+let silentLoop = null;
+
+function unlockAudio() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  // "playback" asks for a bigger sound buffer: fewer glitches on slower phones and tablets.
+  if (!audioCtx) audioCtx = new Ctx({ latencyHint: "playback" });
+  if (audioCtx.state !== "running") audioCtx.resume();
+  // iPhones mute web audio while the ring/silent switch is on, unless the page says it's
+  // playing media. Newer iPhones understand audioSession; older ones need a playing <audio>.
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+  if (!navigator.audioSession && /iP(hone|ad|od)/.test(navigator.userAgent)) {
+    if (!silentLoop) {
+      silentLoop = new Audio(silentWav());
+      silentLoop.loop = true;
+      silentLoop.setAttribute("playsinline", "");
+    }
+    silentLoop.play().catch(() => {});
   }
 }
 
-// Metronome clicks between `from` and `end` seconds, on the beat grid that has a bar line at
-// `barLine`, with a higher click on the first beat of each bar.
-function scheduleClicks(ctx, time, secPerBeat, barLine, from, end, destination) {
-  const beatSec = secPerBeat * 4 / time.beatType;
-  for (let i = 0, at = barLine; at < end - 0.01; i++, at += beatSec) {
-    if (at < from - 0.01) continue;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.frequency.value = i % time.beats === 0 ? 1600 : 1100;
-    gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(0.5, at + 0.002);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
-    osc.connect(gain).connect(destination);
-    osc.start(at);
-    osc.stop(at + 0.06);
-  }
+// A tenth of a second of silence as a WAV file, for the older-iPhone trick above.
+function silentWav() {
+  const samples = 800, view = new DataView(new ArrayBuffer(44 + samples));
+  const text = (at, s) => [...s].forEach((c, i) => view.setUint8(at + i, c.charCodeAt(0)));
+  text(0, "RIFF"); view.setUint32(4, 36 + samples, true); text(8, "WAVE");
+  text(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, 8000, true); view.setUint32(28, 8000, true); view.setUint16(32, 1, true); view.setUint16(34, 8, true);
+  text(36, "data"); view.setUint32(40, samples, true);
+  for (let i = 0; i < samples; i++) view.setUint8(44 + i, 128);  // 128 = silence in 8-bit audio
+  return URL.createObjectURL(new Blob([view.buffer], { type: "audio/wav" }));
+}
+
+function playTone(ctx, on, length, midi, volume, destination) {
+  const off = on + length;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "triangle";
+  osc.frequency.value = 440 * 2 ** ((midi - 69) / 12);
+  gain.gain.setValueAtTime(0, on);
+  gain.gain.linearRampToValueAtTime(volume, on + 0.02);
+  gain.gain.setValueAtTime(volume, Math.max(on + 0.02, off - 0.05));
+  gain.gain.linearRampToValueAtTime(0, off);
+  osc.connect(gain).connect(destination);
+  osc.start(on);
+  osc.stop(off + 0.01);
+}
+
+// A metronome click; higher on the first beat of the bar.
+function playClick(ctx, at, accent, destination) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.frequency.value = accent ? 1600 : 1100;
+  gain.gain.setValueAtTime(0.0001, at);
+  gain.gain.exponentialRampToValueAtTime(0.5, at + 0.002);
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
+  osc.connect(gain).connect(destination);
+  osc.start(at);
+  osc.stop(at + 0.06);
 }
 
 // ---------- Practice section ----------
@@ -669,17 +696,22 @@ $("to-bar").addEventListener("change", () => tidyBars("to-bar"));
 
 // ---------- Playing ----------
 
-// `repeat` is set when Loop starts the section again. That round reuses the audio player
-// that's already running: browsers only let sound start right after a click, so a new
-// player created by the loop on its own would be silent.
+// Sound is prepared a moment ahead as the music plays (not the whole piece at once, which
+// overwhelms phones and tablets), and the marker and count follow the audio clock, allowing
+// for the delay before sound reaches the speaker, so they stay in step with what you hear.
+const LOOKAHEAD = 0.3;  // seconds of sound prepared ahead
+const TICK_MS = 50;     // how often more is prepared
+
+// `repeat` is set when Loop starts the section again: it carries on with the same sound
+// groups, so volumes and the metronome setting stay as they are.
 async function play({ repeat = false } = {}) {
   if (!current) return;
   const previous = repeat ? playback : null;
-  if (previous) previous.timers.forEach(clearTimeout);
+  if (previous) endRound(previous);
   else stop();
   const full = Boolean(current.part.full);
   const mine = current.part.file_path;  // undefined for the full score
-  // Every part is scheduled, so the volume sliders can bring the others in or out mid-play.
+  // Every part is played, so the volume sliders can bring the others in or out mid-play.
   const paths = current.piece.parts.map(p => p.file_path);
   let texts;
   try {
@@ -688,6 +720,7 @@ async function play({ repeat = false } = {}) {
     alert(`Couldn't load the music: ${err.message}`);
     return;
   }
+  if (repeat && playback !== previous) return;  // stopped while the music was loading
   const parsed = paths.map((path, i) => ({ path, ...parseMusicXML(texts[i]) }));
   const main = parsed.find(p => p.path === mine) ?? parsed[0];  // its bars set the playing order
   const order = playingOrder(main.measures);
@@ -698,10 +731,8 @@ async function play({ repeat = false } = {}) {
     : parts.find(p => p.path === mine).notes;
   const simpleEnough = full ? parts.every(p => p.simple) : main.simple;
 
-  const secPerBeat = 60 / +$("tempo").value;
-  if (repeat && playback !== previous) return;  // stopped while the music was loading
-  const ctx = previous?.ctx ?? new AudioContext();
-  if (ctx.state === "suspended") await ctx.resume();
+  if (!audioCtx) unlockAudio();  // normally already done by the Play tap
+  const ctx = audioCtx;
   let groups = previous?.groups;
   if (!groups) {
     groups = {
@@ -720,34 +751,59 @@ async function play({ repeat = false } = {}) {
   // number shown on screen, so the player has time to get their instrument up.
   // A pickup (a short first bar, e.g. one beat before bar 1) is part of the count-in's last
   // bar: in 4/4 with a one-beat pickup the count goes 1-2-3-4, 1-2-3 and the pickup is on 4.
+  const secPerBeat = 60 / +$("tempo").value;  // per quarter note
   const beatSec = secPerBeat * 4 / main.time.beatType;
   const barQuarters = main.time.beats * 4 / main.time.beatType;
   const first = main.measures[0];
   const firstLength = first ? first.end - first.start : barQuarters;
   const pickup = order[0] === 0 && firstLength < barQuarters - 1e-6 ? firstLength : 0;  // in quarters
   const countBars = +$("countin").value;  // before every round, loops too
-  const clickFrom = ctx.currentTime + 0.15;
+  const clickFrom = ctx.currentTime + 0.2;
   const startAt = clickFrom + (countBars ? countBars * barQuarters - pickup : 0) * secPerBeat;
   const firstDownbeat = startAt + pickup * secPerBeat;
   const barLine = firstDownbeat - Math.max(countBars, 1) * barQuarters * secPerBeat;  // the grid every click sits on
-  playback = { ctx, timers: [], groups };
+  const endAt = startAt + parts.find(p => p.path === main.path).length * secPerBeat;
+
+  // Everything that will sound, in time order: notes, count-in clicks and metronome clicks.
+  const events = [];
+  for (const part of parts) {
+    const destination = part.isMine ? groups.mine : groups.others;
+    for (const n of part.notes) {
+      if (n.midi === null || n.tied) continue;
+      const on = startAt + n.start * secPerBeat;
+      events.push({ at: on, sound: () => playTone(ctx, on, n.dur * secPerBeat * 0.95, n.midi, 0.22, destination) });
+    }
+  }
+  const countMarks = [];  // when to show each count-in number
+  for (let i = 0, at = barLine; at < endAt - 0.01; i++, at += beatSec) {
+    if (at < clickFrom - 0.01) continue;
+    const accent = i % main.time.beats === 0, inCount = at < startAt - 0.01;
+    events.push({ at, sound: () => playClick(ctx, at, accent, inCount ? groups.countIn : groups.clicks) });
+    if (inCount) countMarks.push({ at, beat: (i % main.time.beats) + 1 });
+  }
+  events.sort((a, b) => a.at - b.at);
+
+  const round = { ctx, groups, scheduler: null, frame: null };
+  playback = round;
   $("play").textContent = "■ Stop";
 
-  const end = parts.find(p => p.path === main.path).length;  // in quarters, repeats included
-  for (const part of parts) {
-    scheduleNotes(ctx, part.notes, secPerBeat, 0.22, startAt, part.isMine ? groups.mine : groups.others);
-  }
-  scheduleClicks(ctx, main.time, secPerBeat, barLine, clickFrom, startAt, groups.countIn);
-  scheduleClicks(ctx, main.time, secPerBeat, barLine, startAt, startAt + end * secPerBeat, groups.clicks);
+  // Prepare the next moment of sound; at the end of the section, loop or stop.
+  let next = 0;
+  const tick = () => {
+    if (playback !== round) return;
+    const now = ctx.currentTime;
+    while (next < events.length && events[next].at < now + LOOKAHEAD) {
+      const e = events[next++];
+      if (e.at >= now - 0.02) e.sound();  // skip anything already too late (e.g. after a stall)
+    }
+    if (now >= endAt + 0.1) $("loop").checked ? play({ repeat: true }) : stop();
+  };
+  round.scheduler = setInterval(tick, TICK_MS);
+  tick();
 
-  for (let i = 0, at = barLine; at < startAt - 0.01; i++, at += beatSec) {
-    if (at < clickFrom - 0.01) continue;
-    const beat = (i % main.time.beats) + 1;
-    playback.timers.push(setTimeout(() => { $("count-display").textContent = beat; }, (at - ctx.currentTime) * 1000));
-  }
-  playback.timers.push(setTimeout(() => { $("count-display").textContent = ""; }, (startAt - ctx.currentTime) * 1000));
-
-  // Move the score cursor along with the member's part (single-voice parts only).
+  // The marker and count-in numbers, driven by what can actually be heard right now.
+  const heardNow = () => ctx.currentTime - (ctx.outputLatency || ctx.baseLatency || 0);
+  let marker = null;
   if (osmd && simpleEnough) {
     // The marker only knows how to step forward through the score as written, so for each
     // note it's moved to that note's written position, jumping back at repeats.
@@ -762,15 +818,35 @@ async function play({ repeat = false } = {}) {
       if (target < at) { osmd.cursor.reset(); at = 0; }
       while (at < target) { osmd.cursor.next(); at++; }
     };
-    // One marker move per moment a note starts (several parts often start together).
-    const onsets = mainNotes.filter((n, i, all) => !n.chord && (i === 0 || n.start !== all[i - 1].start));
-    moveTo(stepFor(onsets[0]?.written ?? 0));
-    const delay = (startAt - ctx.currentTime) * 1000;
-    onsets.slice(1).forEach(n => playback.timers.push(setTimeout(() => moveTo(stepFor(n.written)), delay + n.start * secPerBeat * 1000)));
+    // One marker position per moment a note starts (several parts often start together).
+    const onsets = mainNotes
+      .filter((n, i, all) => !n.chord && (i === 0 || n.start !== all[i - 1].start))
+      .map(n => ({ at: startAt + n.start * secPerBeat, step: stepFor(n.written) }));
+    moveTo(onsets[0]?.step ?? 0);
+    marker = { onsets, next: 1, moveTo };
   }
-  // At the end of the section: go round again if Loop is ticked, otherwise stop.
-  playback.timers.push(setTimeout(() => ($("loop").checked ? play({ repeat: true }) : stop()),
-    (startAt - ctx.currentTime + end * secPerBeat) * 1000 + 150));
+  let countNext = 0;
+  const draw = () => {
+    if (playback !== round) return;
+    const now = heardNow();
+    while (countNext < countMarks.length && countMarks[countNext].at <= now) {
+      $("count-display").textContent = countMarks[countNext++].beat;
+    }
+    if (now >= startAt - 0.01 && $("count-display").textContent) $("count-display").textContent = "";
+    if (marker) {
+      let target = null;
+      while (marker.next < marker.onsets.length && marker.onsets[marker.next].at <= now) target = marker.onsets[marker.next++].step;
+      if (target !== null) marker.moveTo(target);  // only the latest, if several were passed
+    }
+    round.frame = requestAnimationFrame(draw);
+  };
+  round.frame = requestAnimationFrame(draw);
+}
+
+// Stops preparing sound and moving the marker for a round (the sound groups carry on).
+function endRound(round) {
+  clearInterval(round.scheduler);
+  cancelAnimationFrame(round.frame);
 }
 
 // Walks the marker through the score once to learn where each of its positions is.
@@ -787,15 +863,23 @@ function cursorSteps() {
 
 function stop() {
   if (!playback) return;
-  playback.timers.forEach(clearTimeout);
-  playback.ctx.close();
+  endRound(playback);
+  // Cutting the round's sound groups silences anything already prepared. The audio player
+  // itself is kept, so the next Play doesn't need unlocking again.
+  Object.values(playback.groups).forEach(g => g.disconnect());
   playback = null;
+  silentLoop?.pause();
   $("play").textContent = "▶ Play";
   $("count-display").textContent = "";
   if (osmd?.cursor) osmd.cursor.hide();
 }
 
-$("play").addEventListener("click", () => (playback ? stop() : play()));
+// Wake the audio straight from the tap (phones insist), then load and play.
+$("play").addEventListener("click", () => {
+  if (playback) { stop(); return; }
+  unlockAudio();
+  play();
+});
 $("tempo").addEventListener("input", e => { $("tempo-val").textContent = e.target.value; });
 
 // Volume and metronome changes apply straight away, even while playing.
