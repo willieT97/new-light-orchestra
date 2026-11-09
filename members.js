@@ -353,16 +353,34 @@ async function withA4Pages(use) {
   try {
     const pageView = new opensheetmusicdisplay.OpenSheetMusicDisplay(box, {
       autoResize: false, backend: "svg", pageFormat: "A4_P", pageBackgroundColor: "#FFFFFF",
-      drawTitle: true, drawSubtitle: true, drawComposer: true, drawLyricist: false, drawPartNames: Boolean(part.full),
+      // The instrument goes in the top-left corner instead (see cornerLabel), not under the title.
+      drawTitle: true, drawSubtitle: false, drawComposer: true, drawLyricist: false, drawPartNames: Boolean(part.full),
       drawMetronomeMarks: false,  // their "= 100" text doesn't survive the PDF conversion
     });
     await pageView.load(withDeclaration(await partXml(piece, part)));
     useLibraryDetails(pageView, piece, part);
     pageView.render();
-    await use([...box.querySelectorAll("svg")], piece, part);
+    const pages = [...box.querySelectorAll("svg")];
+    pages.forEach(svg => cornerLabel(svg, part.instrument, pageView.EngravingRules));
+    await use(pages, piece, part);
   } finally {
     box.remove();
   }
+}
+
+// Writes the instrument in bold in the top-left corner of a printed page, lined up with the
+// left edge of the music, so players can find their part quickly in a pile of sheets.
+function cornerLabel(svg, text, rules) {
+  const unit = 10;  // OSMD lays pages out in units of 10 pixels
+  const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  label.setAttribute("x", rules.PageLeftMargin * unit);
+  label.setAttribute("y", Math.max(rules.PageTopMargin * unit - 14, 24));
+  label.setAttribute("font-family", "Times New Roman, Times, serif");
+  label.setAttribute("font-size", "20");
+  label.setAttribute("font-weight", "bold");
+  label.setAttribute("fill", "#000000");
+  label.textContent = text;
+  svg.append(label);
 }
 
 // Runs `action` with the button showing `busyText`, and reports a failure.
