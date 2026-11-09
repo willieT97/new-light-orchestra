@@ -529,6 +529,22 @@ function parseMusicXML(xml) {
 const sliderGain = (id, max = 1) => (+$(id).value / 100) ** 2 * max;
 const OTHERS_MAX = 0.6;  // the rest of the orchestra is several parts at once
 
+// A soft limiter before the speakers, so loud chords with your part at full
+// volume don't crackle. Made once per audio context and kept.
+let limiter = null;
+function limiterFor(ctx) {
+  if (limiter?.context !== ctx) {
+    limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -6;
+    limiter.knee.value = 6;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.25;
+    limiter.connect(ctx.destination);
+  }
+  return limiter;
+}
+
 // ---------- Sound ----------
 
 // One audio player for the whole visit. Phones only let sound start straight from a tap,
@@ -744,7 +760,7 @@ async function play({ repeat = false } = {}) {
     groups.mine.gain.value = sliderGain("vol-mine");
     groups.others.gain.value = sliderGain("vol-others", OTHERS_MAX);
     groups.clicks.gain.value = $("metronome").checked ? 1 : 0;
-    Object.values(groups).forEach(g => g.connect(ctx.destination));
+    Object.values(groups).forEach(g => g.connect(limiterFor(ctx)));
   }
 
   // Count-in: bars of clicks (always heard) before the music starts, with the beat
