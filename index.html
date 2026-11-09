@@ -3,6 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Links in sign-up and password emails should land in the members area. If one
+    // arrives here instead (Supabase falls back to the home page), pass it straight on.
+    if (/(^|[#&])(access_token|error_description)=/.test(location.hash) || /[?&]code=/.test(location.search))
+      location.replace("members.html" + location.search + location.hash);
+  </script>
   <title>New Light Orchestra</title>
   <meta name="description" content="New Light Orchestra — a friendly amateur orchestra. Concerts, rehearsals and how to join.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,8 +39,10 @@
     <div class="wrap">
       <h1>New Light Orchestra</h1>
       <p>A friendly amateur orchestra for players who love making music together, whether you're picking up your instrument again or have played for years.</p>
-      <a class="btn" href="signup.html">Members sign up</a>
-      <a class="btn ghost" href="#join">Register your interest</a>
+      <div class="hero-actions">
+        <a class="btn" href="signup.html">Members sign up</a>
+        <a class="btn ghost" href="#join">Register your interest</a>
+      </div>
     </div>
   </div>
 

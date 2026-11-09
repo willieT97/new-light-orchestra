@@ -290,7 +290,7 @@ $("member-form").addEventListener("submit", async e => {
   const ok = await run(sb.from("members").insert({
     email: f.email.value.trim().toLowerCase(), name: f.name.value.trim(),
     instrument: f.instrument.value.trim(), is_admin: f.is_admin.checked,
-  }), `Added ${f.name.value.trim()}. They can now sign in with ${f.email.value.trim()}.`);
+  }), `Added ${f.name.value.trim()}. We've emailed ${f.email.value.trim()} a link to set up their account.`);
   if (ok) { f.reset(); loadMembers(); }
 });
 

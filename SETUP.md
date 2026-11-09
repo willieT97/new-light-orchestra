@@ -96,6 +96,26 @@ Add the new address to Supabase's Redirect URLs (step 5).
 
 ---
 
+## 8. Automatic emails
+
+The function in `supabase/functions/join-request-email/index.ts` sends:
+
+- a thank-you to anyone who fills in "Register your interest", plus a copy to the orchestra;
+- a welcome email, with a link to Members sign up, to anyone the librarian adds as a member.
+  It isn't sent to someone who already has an account.
+
+To set it up:
+
+1. **Edge Functions → Deploy a new function** (or open `join-request-email` to update it): name it
+   `join-request-email`, paste the file in, and deploy. Leave **Verify JWT** on.
+2. **Edge Functions → Secrets:** add `RESEND_API_KEY`.
+3. **Database → Webhooks → Create a new hook**, once for each table:
+   - `join_requests`, event **Insert**;
+   - `members`, event **Insert**.
+
+   For each one, choose **Supabase Edge Functions** → `join-request-email`, method POST, and add the
+   **Authorization** header with the service key (the dashboard offers it).
+
 ## Keeping it running
 
 - **Pausing:** Supabase pauses free projects after a week with no activity. The workflow in
