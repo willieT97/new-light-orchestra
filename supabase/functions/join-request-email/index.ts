@@ -85,7 +85,7 @@ async function memberAdded(email: unknown) {
 <p>Welcome to New Light Orchestra! You've been added as a member (${escape(m.instrument)}), so you can now set up your account for the members area, where you'll find your music and can play along with it.</p>
 <p><a href="${SIGNUP_PAGE}" style="display:inline-block;background:#e3c271;color:#1b2440;padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:600">Set up my account</a></p>
 <p>Use this email address (${escape(m.email)}) when it asks, then choose a password.</p>
-<p>Rehearsals are every Tuesday, 6:30–8:30pm, in the Methodist Church Hall, Portlaoise.</p>
+<p>Rehearsals are every Tuesday, 6:30–7:45pm, in the Methodist Church Hall, Portlaoise.</p>
 <p>If you have any questions, just reply to this email.</p>
 <p>Best wishes,<br>William Troy<br>Musical Director, New Light Orchestra</p>`,
     });
