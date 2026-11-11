@@ -89,15 +89,13 @@
         <div class="eyebrow">Rehearsals</div>
         <h2>Every Tuesday, 6:30–7:45pm</h2>
         <p><strong>Where:</strong> Methodist Church Hall, Portlaoise</p>
-        <p class="muted">Our first rehearsal is on Tuesday 10 November.</p>
+        <p class="muted">New players are welcome to come along. Register your interest below and we'll be in touch.</p>
       </div>
       <div class="card">
         <h3>Coming up</h3>
-        <ul class="schedule">
-          <li><span>Tue 10 Nov · 6:30–7:45pm</span><span class="tag need">First rehearsal</span></li>
-          <li><span>Tue 17 Nov · 6:30–7:45pm</span><span class="tag">Rehearsal</span></li>
-          <li><span>Tue 24 Nov · 6:30–7:45pm</span><span class="tag">Rehearsal</span></li>
-          <li><span>Tue 1 Dec · 6:30–7:45pm</span><span class="tag">Rehearsal</span></li>
+        <!-- Filled in with the next four Tuesdays by the script at the end of the page. -->
+        <ul class="schedule" id="rehearsal-list">
+          <li><span>Every Tuesday · 6:30–7:45pm</span><span class="tag">Rehearsal</span></li>
         </ul>
       </div>
     </div>
@@ -203,6 +201,11 @@
         save: f => sb.from("mailing_list").insert({ email: f.email.value.trim().toLowerCase() }),
       },
     };
+    // The next four rehearsals, worked out from today's date.
+    document.getElementById("rehearsal-list").replaceChildren(...nextRehearsals(4).map((d, i) =>
+      el("li", {}, el("span", { textContent: `${rehearsalDate(d)} · ${REHEARSAL.start}–${REHEARSAL.end}` }),
+        el("span", { className: i ? "tag" : "tag need", textContent: i ? "Rehearsal" : "Next rehearsal" }))));
+
     for (const [formId, { thanks, save }] of Object.entries(FORMS)) {
       document.getElementById(formId).addEventListener("submit", async e => {
         e.preventDefault();

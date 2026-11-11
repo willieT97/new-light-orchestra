@@ -2,6 +2,9 @@
 // (OpenSheetMusicDisplay) and simple playback (Web Audio).
 
 const $ = id => document.getElementById(id);
+
+// Notices: the next rehearsal, worked out from today's date.
+$("next-rehearsal").textContent = `Next rehearsal ${rehearsalDate(nextRehearsals(1)[0])}, ${REHEARSAL.start}pm`;
 const VIEWS = ["login-view", "message-view", "library-view"];
 let member = null;    // row from the members table
 let osmd = null;

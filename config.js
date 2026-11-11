@@ -36,3 +36,21 @@ function el(tag, props = {}, ...children) {
   node.append(...children.filter(c => c != null && c !== false));
   return node;
 }
+
+// ---------- Rehearsals ----------
+// Every Tuesday, 6:30–7:45pm. The home page and members area list the next few
+// themselves, so the dates never go out of date.
+const REHEARSAL = { weekday: 2, start: "6:30", end: "7:45pm", endHour: 19, endMinute: 45 };  // 2 = Tuesday
+
+// The next `count` rehearsal dates. Today counts until the rehearsal has finished.
+function nextRehearsals(count, now = new Date()) {
+  const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const finished = now.getHours() * 60 + now.getMinutes() >= REHEARSAL.endHour * 60 + REHEARSAL.endMinute;
+  let ahead = (REHEARSAL.weekday - day.getDay() + 7) % 7;
+  if (ahead === 0 && finished) ahead = 7;
+  day.setDate(day.getDate() + ahead);
+  return Array.from({ length: count }, (_, i) => new Date(day.getFullYear(), day.getMonth(), day.getDate() + 7 * i));
+}
+
+// "Tue 17 Nov"
+const rehearsalDate = d => d.toLocaleDateString("en-IE", { weekday: "short", day: "numeric", month: "short" }).replace(",", "");
