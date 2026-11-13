@@ -149,6 +149,24 @@ $$;
 revoke all on function public.member_signup_status(text) from public;
 grant execute on function public.member_signup_status(text) to anon, authenticated;
 
+-- ---------- Account status for Librarian tools ----------
+
+create or replace function public.member_account_statuses()
+returns table (email text, status text, last_sign_in timestamptz)
+language sql stable security definer set search_path = '' as $$
+  select m.email,
+         case when u.id is null then 'none'
+              when u.email_confirmed_at is null then 'unconfirmed'
+              else 'set_up' end,
+         u.last_sign_in_at
+  from public.members m
+  left join auth.users u on lower(u.email) = m.email
+  where public.is_admin();
+$$;
+
+revoke all on function public.member_account_statuses() from public;
+grant execute on function public.member_account_statuses() to authenticated;
+
 -- ---------- First admin ----------
 -- Run this separately, with your own details (email in lower case):
 --

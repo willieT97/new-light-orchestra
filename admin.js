@@ -263,9 +263,29 @@ $("score-form").addEventListener("submit", async e => {
 
 // ---------- Members ----------
 
+// Whether a member has set up their account, from member_account_statuses() in Supabase.
+// If that hasn't been added to the database yet, the column just shows a dash.
+function accountCell(account) {
+  if (!account) return el("td", { className: "muted", textContent: "–" });
+  if (account.status === "none") return el("td", { className: "muted", textContent: "Not yet" });
+  if (account.status === "unconfirmed") {
+    return el("td", {}, el("span", { className: "tag need account-tag", textContent: "Email not confirmed" }));
+  }
+  const signedIn = account.last_sign_in && new Date(account.last_sign_in);
+  const last = signedIn && signedIn.toLocaleDateString("en-IE", {
+    day: "numeric", month: "short", year: signedIn.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
+  });
+  return el("td", {}, el("span", { className: "tag", textContent: "Set up" }),
+    last ? el("div", { className: "muted account-last", textContent: `Last signed in ${last}` }) : null);
+}
+
 async function loadMembers() {
-  const members = await run(sb.from("members").select("*").order("name"));
+  const [members, accounts] = await Promise.all([
+    run(sb.from("members").select("*").order("name")),
+    sb.rpc("member_account_statuses").then(({ data }) => data ?? []),
+  ]);
   if (!members) return;
+  const accountOf = new Map(accounts.map(a => [a.email, a]));
   const rows = members.map(m => {
     const del = el("button", { className: "link-btn", type: "button", textContent: "Remove" });
     del.addEventListener("click", async () => {
@@ -276,11 +296,12 @@ async function loadMembers() {
       el("td", { textContent: m.name }),
       el("td", { textContent: m.instrument }),
       el("td", { textContent: m.email }),
+      accountCell(accountOf.get(m.email)),
       el("td", {}, m.is_admin ? el("span", { className: "tag need", textContent: "Admin" }) : ""),
       el("td", {}, del));
   });
   $("members-table").replaceChildren(
-    el("thead", {}, el("tr", {}, ...["Name", "Instrument", "Email", "", ""].map(h => el("th", { textContent: h })))),
+    el("thead", {}, el("tr", {}, ...["Name", "Instrument", "Email", "Account", "", ""].map(h => el("th", { textContent: h })))),
     el("tbody", {}, ...rows));
 }
 

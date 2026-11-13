@@ -256,3 +256,7 @@ th { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color:
 #score-parts input[type=checkbox] { width: auto; }
 #score-parts input[list] { padding: 6px 8px; }
 .notice.error { background: #fbe3dc; }
+
+/* Librarian tools: the "Last signed in" date under a member's account status. */
+.account-last { font-size: .8rem; margin-top: 4px; }
+.account-tag { white-space: normal; }
