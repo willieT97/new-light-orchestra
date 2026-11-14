@@ -263,6 +263,70 @@ $("score-form").addEventListener("submit", async e => {
 
 // ---------- Members ----------
 
+// One box per instrument, with "Add another instrument" for members who play more than one.
+function instrumentPicker(values) {
+  const box = el("div", { className: "instrument-picker" });
+  const addButton = el("button", { type: "button", className: "link-btn", textContent: "+ Add another instrument" });
+  const tidy = () => {
+    const rows = [...box.querySelectorAll(".instrument-row")];
+    rows.forEach((row, i) => {
+      row.querySelector("input").required = i === 0;
+      row.querySelector("button").hidden = rows.length < 2;
+    });
+  };
+  const addRow = (value = "") => {
+    const input = el("input", { value, autocomplete: "off", ariaLabel: "Instrument" });
+    input.setAttribute("list", "instrument-list");
+    const remove = el("button", { type: "button", className: "link-btn", textContent: "Remove", ariaLabel: "Remove this instrument" });
+    const row = el("div", { className: "instrument-row" }, input, remove);
+    remove.addEventListener("click", () => { row.remove(); tidy(); });
+    box.insertBefore(row, addButton);
+    tidy();
+    return input;
+  };
+  addButton.addEventListener("click", () => addRow().focus());
+  box.append(addButton);
+  const start = splitInstruments(values);
+  (start.length ? start : [""]).forEach(v => addRow(v));
+  return { node: box, value: () => joinInstruments([...box.querySelectorAll("input")].map(i => i.value)) };
+}
+
+let newMemberInstruments;
+function resetMemberInstruments() {
+  newMemberInstruments = instrumentPicker("");
+  $("member-instruments").replaceChildren(newMemberInstruments.node);
+}
+resetMemberInstruments();
+
+// The instrument cell of the members list, with "Change" to edit it in place.
+function instrumentCell(m) {
+  const cell = el("td");
+  const show = () => {
+    const change = el("button", { className: "link-btn", type: "button", textContent: "Change" });
+    change.addEventListener("click", edit);
+    cell.replaceChildren(el("div", { textContent: splitInstruments(m.instrument).join(", ") }), change);
+  };
+  const edit = () => {
+    const picker = instrumentPicker(m.instrument);
+    const save = el("button", { className: "btn small", type: "button", textContent: "Save" });
+    const cancel = el("button", { className: "link-btn", type: "button", textContent: "Cancel" });
+    cancel.addEventListener("click", show);
+    save.addEventListener("click", async () => {
+      const instrument = picker.value();
+      if (!instrument) { status("A member needs at least one instrument.", true); return; }
+      save.disabled = true;
+      if (await run(sb.from("members").update({ instrument }).eq("email", m.email), `Saved ${m.name}'s instruments.`)) {
+        m.instrument = instrument;
+        show();
+      } else save.disabled = false;
+    });
+    cell.replaceChildren(picker.node, el("div", { className: "instrument-actions" }, save, cancel));
+    picker.node.querySelector("input").focus();
+  };
+  show();
+  return cell;
+}
+
 // Whether a member has set up their account, from member_account_statuses() in Supabase.
 // If that hasn't been added to the database yet, the column just shows a dash.
 function accountCell(account) {
@@ -294,7 +358,7 @@ async function loadMembers() {
     });
     return el("tr", {},
       el("td", { textContent: m.name }),
-      el("td", { textContent: m.instrument }),
+      instrumentCell(m),
       el("td", { textContent: m.email }),
       accountCell(accountOf.get(m.email)),
       el("td", {}, m.is_admin ? el("span", { className: "tag need", textContent: "Admin" }) : ""),
@@ -310,9 +374,9 @@ $("member-form").addEventListener("submit", async e => {
   const f = e.target;
   const ok = await run(sb.from("members").insert({
     email: f.email.value.trim().toLowerCase(), name: f.name.value.trim(),
-    instrument: f.instrument.value.trim(), is_admin: f.is_admin.checked,
+    instrument: newMemberInstruments.value(), is_admin: f.is_admin.checked,
   }), `Added ${f.name.value.trim()}. We've emailed ${f.email.value.trim()} a link to set up their account.`);
-  if (ok) { f.reset(); loadMembers(); }
+  if (ok) { f.reset(); resetMemberInstruments(); loadMembers(); }
 });
 
 // ---------- Join requests ----------

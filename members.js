@@ -198,12 +198,14 @@ async function openLibrary() {
   openPiece(pieces[0], buttons[0]);
 }
 
-// Players get their own instrument's part; the musical director and librarians (admins)
-// can switch to any part. A player with several parts (Flute 1 and 2) can switch between those.
+// Players get their own instruments' parts; the musical director and librarians (admins)
+// can switch to any part. A player with several parts (Flute 1 and 2, or Violin I and Viola)
+// can switch between those.
 function openPiece(piece, btn) {
   document.querySelectorAll(".piece-btn").forEach(b => b.classList.toggle("active", b === btn));
   const parts = [...piece.parts].sort(scoreOrder);
-  const mine = parts.filter(p => sameInstrument(p.instrument, member.instrument));
+  const myInstruments = splitInstruments(member.instrument);
+  const mine = parts.filter(p => myInstruments.some(i => sameInstrument(p.instrument, i)));
   const choices = member.is_admin ? (parts.length > 1 ? [FULL_SCORE, ...parts] : parts) : mine;
 
   if (!choices.length) {
@@ -215,7 +217,7 @@ function openPiece(piece, btn) {
     $("downloads").hidden = true;
     $("controls").hidden = true;
     $("score").replaceChildren(el("p", { className: "muted",
-      textContent: `There's no ${member.instrument} part in this piece. If you think that's a mistake, please ask the librarian.` }));
+      textContent: `There's no ${instrumentsInWords(member.instrument)} part in this piece. If you think that's a mistake, please ask the librarian.` }));
     return;
   }
 

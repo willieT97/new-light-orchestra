@@ -19,6 +19,12 @@ const INSTRUMENTS = [
   "Violin I", "Violin II", "Viola", "Cello", "Double Bass",
 ];
 
+// A member can play more than one instrument. They're kept together as "Violin I, Viola".
+const splitInstruments = s => [...new Set(String(s ?? "").split(",").map(x => x.trim()).filter(Boolean))];
+const joinInstruments = list => splitInstruments(list.join(",")).join(", ");
+// "Violin I", "Violin I or Viola", "Flute, Piccolo or Oboe"
+const instrumentsInWords = s => splitInstruments(s).join(", ").replace(/, ([^,]*)$/, " or $1");
+
 // Turns a Supabase sign-in/sign-up error into something a member can act on. When Supabase
 // can't send an email (e.g. the email settings are wrong) it returns an error with no message.
 function friendlyError(err) {

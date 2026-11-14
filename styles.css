@@ -260,3 +260,13 @@ th { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color:
 /* Librarian tools: the "Last signed in" date under a member's account status. */
 .account-last { font-size: .8rem; margin-top: 4px; }
 .account-tag { white-space: normal; }
+
+/* Librarian tools: a member's instruments, one box each. */
+.field { display: grid; gap: 6px; }
+.field-label { font-size: .88rem; font-weight: 600; }
+.instrument-picker { display: grid; gap: 8px; }
+.instrument-row { display: flex; gap: 10px; align-items: center; }
+.instrument-row input { flex: 1; min-width: 0; }
+.instrument-picker > .link-btn { justify-self: start; color: var(--navy); }
+.instrument-actions { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+td .instrument-picker input { min-width: 9rem; }
